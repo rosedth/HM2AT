@@ -52,7 +52,7 @@ public class VerifyDeviceFrame extends JFrame {
 	private JTextField txtMainEntityName;
 
 	private String notAdaptableStatus = "<html><font color='red'>Not adaptable</font></html>";
-	private String adaptableStatus = "<html><font color='green'>Adaptable</font></html>";
+	private String adaptableStatus = "<html><font color='green'> Adaptable </font></html>";
 	private boolean status = false;
 
 	private String configExt = "json";
