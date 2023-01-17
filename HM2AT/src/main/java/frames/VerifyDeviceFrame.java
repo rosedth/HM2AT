@@ -2,15 +2,18 @@ package frames;
 
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.EventQueue;
 import java.awt.Font;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -22,6 +25,7 @@ import javax.swing.GroupLayout.Alignment;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -31,58 +35,62 @@ import javax.swing.JTextField;
 import javax.swing.LayoutStyle.ComponentPlacement;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableColumn;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.rossedth.hm2aTool.MainHM2AT;
 
-import logic.MethodTableModel;
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
+
+import logic.CommunicationMechanism;
+import logic.Hook;
+import logic.MethodTable;
+import logic.Repository;
 import logic.UnderlyingDevice;
 import utils.ComboPopulator;
 import utils.FileManager;
 import utils.JARManager;
+import utils.MethodTableModel;
 
 public class VerifyDeviceFrame extends JFrame {
 
 	private SpecificModeFrame specificModeFrame;
 	private JPanel contentPane;
+
 	private JButton btnContinue;
 	private JButton btnBack;
-	private JTextField txtDeviceName;
-	private JTextField txtMainEntityName;
 
-	private String notAdaptableStatus = "<html><font color='red'>Not adaptable</font></html>";
-	private String adaptableStatus = "<html><font color='green'> Adaptable </font></html>";
-	private boolean status = false;
-
-	private String configExt = "json";
-
+	// Device Panel fields
 	private UnderlyingDevice device;
-	private JComboBox cbDeviceParadigm;
-	private JComboBox cbDeviceLanguage;
-	private JComboBox cbCommPattern;
+	private JTextField txtLocation;
+	private JTextField txtDeviceName;
 	private String deviceType;
 	private String deviceLanguage;
-	private boolean adaptable;
+	private JTextField txtMainEntityName;
 	private JTextField txtConfigFileName;
 
-	/**
-	 * Launch the application.
-	 */
-	public static void main(String[] args) {
-		EventQueue.invokeLater(new Runnable() {
-			public void run() {
-				try {
-					VerifyDeviceFrame frame = new VerifyDeviceFrame(
-							"C:\\Users\\rosed\\Downloads\\Installers\\JabRef-5.7.msi", "Java", "JAR",
-							new SpecificModeFrame());
-					frame.setVisible(true);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		});
-	}
+	private JComboBox cbDeviceParadigm;
+	private JComboBox cbDeviceLanguage;
+	private JButton btnSearchDeviceConfig;
+
+	// Table Fields
+	private MethodTableModel model;
+	private JTable methodsTable;
+	
+	// Communication Panel fields
+	private JComboBox cbCommPattern;
+	private String configExt = "config-device.json";
+
+	// Status fields
+	private boolean status = false;
+	private String notAdaptableStatus = "<html><font color='red'>Not adaptable</font></html>";
+	private String adaptableStatus = "<html><font color='green'> Adaptable </font></html>";
+	private boolean adaptable;
+
+
 
 	/**
 	 * Create the frame.
@@ -114,8 +122,9 @@ public class VerifyDeviceFrame extends JFrame {
 		panelAdaptableHooks.setBorder(
 				new TitledBorder(null, "Adaptable Hooks", TitledBorder.LEADING, TitledBorder.TOP, null, null));
 
-		JPanel panel = new JPanel();
-		panel.setBorder(new TitledBorder(null, "Communication", TitledBorder.LEADING, TitledBorder.TOP, null, null));
+		JPanel panelCommunication = new JPanel();
+		panelCommunication
+				.setBorder(new TitledBorder(null, "Communication", TitledBorder.LEADING, TitledBorder.TOP, null, null));
 
 		JLabel lblStatus = new JLabel("Status: ");
 		lblStatus.setVisible(status);
@@ -128,9 +137,29 @@ public class VerifyDeviceFrame extends JFrame {
 		 * Create the buttons.
 		 */
 
+		btnBack = new JButton("Back");
+		btnBack.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				device = null;
+				VerifyDeviceFrame.this.dispose();
+			}
+		});
+
+		btnContinue = new JButton("Continue");
+		btnContinue.setEnabled(false);
+		btnContinue.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				specificModeFrame.setDevice(device);
+				specificModeFrame.setAdaptable(adaptable);
+				specificModeFrame.cbDeviceModel.setEnabled(true);
+				specificModeFrame.cbModelProgLang.setEnabled(true);
+				VerifyDeviceFrame.this.dispose();
+			}
+		});
+
 		JButton btnValidate = new JButton("");
-		ImageIcon imgSearch = new ImageIcon(this.getClass().getResource("/evaluate3.png"));
-		btnValidate.setIcon(imgSearch);
+		ImageIcon imgValidate = new ImageIcon(this.getClass().getResource("/evaluate3.png"));
+		btnValidate.setIcon(imgValidate);
 		btnValidate.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				lblStatus.setVisible(true);
@@ -157,80 +186,49 @@ public class VerifyDeviceFrame extends JFrame {
 			}
 		});
 
-		btnBack = new JButton("Back");
-		btnBack.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				device = null;
-				VerifyDeviceFrame.this.dispose();
-			}
-		});
-
-		btnContinue = new JButton("Continue");
-		btnContinue.setEnabled(false);
-		btnContinue.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				specificModeFrame.setDevice(device);
-				specificModeFrame.setAdaptable(adaptable);
-				specificModeFrame.cbDeviceModel.setEnabled(true);
-				specificModeFrame.cbModelProgLang.setEnabled(true);
-				VerifyDeviceFrame.this.dispose();
-			}
-		});
-
 		GroupLayout gl_contentPane = new GroupLayout(contentPane);
-		gl_contentPane.setHorizontalGroup(gl_contentPane.createParallelGroup(Alignment.LEADING)
-				.addGroup(gl_contentPane.createSequentialGroup().addContainerGap()
-						.addGroup(gl_contentPane.createParallelGroup(Alignment.LEADING)
-								.addComponent(panelAdaptableHooks, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, 732,
-										Short.MAX_VALUE)
-								.addComponent(panelGeneralInfo, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, 732,
-										Short.MAX_VALUE)
-								.addGroup(Alignment.TRAILING,
-										gl_contentPane.createSequentialGroup().addComponent(lblStatus)
-												.addPreferredGap(ComponentPlacement.UNRELATED)
-												.addComponent(lblStatusValue, GroupLayout.PREFERRED_SIZE, 125,
-														GroupLayout.PREFERRED_SIZE)
-												.addGap(396).addComponent(btnBack)
-												.addPreferredGap(ComponentPlacement.RELATED).addComponent(btnContinue))
-								.addComponent(btnValidate, Alignment.TRAILING, GroupLayout.PREFERRED_SIZE, 35,
-										GroupLayout.PREFERRED_SIZE)
-								.addComponent(panel, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, 732,
-										Short.MAX_VALUE))
-						.addContainerGap()));
-		gl_contentPane.setVerticalGroup(gl_contentPane.createParallelGroup(Alignment.TRAILING)
-				.addGroup(gl_contentPane.createSequentialGroup().addGap(7)
-						.addComponent(panelGeneralInfo, GroupLayout.PREFERRED_SIZE, 181, Short.MAX_VALUE).addGap(18)
-						.addComponent(panelAdaptableHooks, GroupLayout.PREFERRED_SIZE, 208, GroupLayout.PREFERRED_SIZE)
-						.addPreferredGap(ComponentPlacement.UNRELATED)
-						.addComponent(panel, GroupLayout.PREFERRED_SIZE, 93, GroupLayout.PREFERRED_SIZE)
-						.addPreferredGap(ComponentPlacement.RELATED)
-						.addComponent(btnValidate, GroupLayout.PREFERRED_SIZE, 30, GroupLayout.PREFERRED_SIZE)
-						.addGap(31)
+		gl_contentPane.setHorizontalGroup(gl_contentPane.createParallelGroup(Alignment.LEADING).addGroup(gl_contentPane
+				.createSequentialGroup().addContainerGap()
+				.addGroup(gl_contentPane.createParallelGroup(Alignment.LEADING).addGroup(gl_contentPane
+						.createSequentialGroup()
 						.addGroup(gl_contentPane.createParallelGroup(Alignment.TRAILING)
-								.addGroup(gl_contentPane.createParallelGroup(Alignment.BASELINE)
-										.addComponent(lblStatusValue).addComponent(lblStatus))
-								.addGroup(gl_contentPane.createParallelGroup(Alignment.BASELINE).addComponent(btnBack)
-										.addComponent(btnContinue)))
-						.addContainerGap()));
+								.addGroup(gl_contentPane.createSequentialGroup().addComponent(lblStatus)
+										.addPreferredGap(ComponentPlacement.UNRELATED)
+										.addComponent(lblStatusValue, GroupLayout.PREFERRED_SIZE, 125,
+												GroupLayout.PREFERRED_SIZE)
+										.addGap(369).addComponent(btnBack).addGap(18).addComponent(btnContinue)
+										.addGap(15))
+								.addComponent(panelCommunication, GroupLayout.DEFAULT_SIZE, 732, Short.MAX_VALUE)
+								.addComponent(panelAdaptableHooks, GroupLayout.DEFAULT_SIZE, 732, Short.MAX_VALUE)
+								.addComponent(panelGeneralInfo, GroupLayout.DEFAULT_SIZE, 732, Short.MAX_VALUE))
+						.addContainerGap())
+						.addGroup(Alignment.TRAILING, gl_contentPane.createSequentialGroup()
+								.addComponent(btnValidate, GroupLayout.PREFERRED_SIZE, 35, GroupLayout.PREFERRED_SIZE)
+								.addGap(27)))));
+		gl_contentPane.setVerticalGroup(gl_contentPane.createParallelGroup(Alignment.TRAILING).addGroup(gl_contentPane
+				.createSequentialGroup().addGap(7)
+				.addComponent(panelGeneralInfo, GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+				.addPreferredGap(ComponentPlacement.UNRELATED)
+				.addComponent(panelAdaptableHooks, GroupLayout.PREFERRED_SIZE, 201, GroupLayout.PREFERRED_SIZE)
+				.addGap(18).addComponent(panelCommunication, GroupLayout.PREFERRED_SIZE, 69, GroupLayout.PREFERRED_SIZE)
+				.addGap(18).addComponent(btnValidate, GroupLayout.PREFERRED_SIZE, 30, GroupLayout.PREFERRED_SIZE)
+				.addPreferredGap(ComponentPlacement.UNRELATED)
+				.addGroup(gl_contentPane.createParallelGroup(Alignment.TRAILING)
+						.addGroup(gl_contentPane.createParallelGroup(Alignment.BASELINE).addComponent(lblStatusValue)
+								.addComponent(lblStatus))
+						.addGroup(gl_contentPane.createParallelGroup(Alignment.BASELINE).addComponent(btnBack)
+								.addComponent(btnContinue)))
+				.addContainerGap()));
 
 		/**
-		 * Create "Communication" Panel
+		 * Create "General Information" Panel
 		 */
 
-		JLabel lblCommPattern = new JLabel("Pattern");
-		cbCommPattern = new JComboBox(populateCommunicationPattern());
-
-		GroupLayout gl_panel = new GroupLayout(panel);
-		gl_panel.setHorizontalGroup(gl_panel.createParallelGroup(Alignment.LEADING)
-				.addGroup(gl_panel.createSequentialGroup().addContainerGap().addComponent(lblCommPattern).addGap(18)
-						.addComponent(cbCommPattern, 0, 608, Short.MAX_VALUE).addContainerGap()));
-		gl_panel.setVerticalGroup(gl_panel.createParallelGroup(Alignment.LEADING)
-				.addGroup(gl_panel.createSequentialGroup().addGap(22)
-						.addGroup(gl_panel.createParallelGroup(Alignment.BASELINE).addComponent(lblCommPattern)
-								.addComponent(cbCommPattern, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
-										GroupLayout.PREFERRED_SIZE))
-						.addContainerGap(45, Short.MAX_VALUE)));
-		panel.setLayout(gl_panel);
+		JLabel lblLocation = new JLabel("Location");
+		txtLocation = new JTextField(filePath);
+		txtLocation.setEditable(false);
+		txtLocation.setEnabled(false);
+		txtLocation.setColumns(10);
 
 		JLabel lblDeviceName = new JLabel("Device Name");
 		txtDeviceName = new JTextField();
@@ -256,139 +254,241 @@ public class VerifyDeviceFrame extends JFrame {
 		txtConfigFileName.setEditable(false);
 		txtConfigFileName.setColumns(10);
 
+		JButton btnMainEntitySearch = new JButton("");
+		btnMainEntitySearch.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				List<MethodTable> methods = loadingEntityMethods();
+				model = new MethodTableModel(methods);
+				methodsTable.setModel(model);
+				setUpHookTypeColumn(methodsTable, methodsTable.getColumnModel().getColumn(4));
+			}
+		});
+		ImageIcon imgLoad = new ImageIcon(this.getClass().getResource("/load.png"));
+		btnMainEntitySearch.setIcon(imgLoad);
+
+		btnSearchDeviceConfig = new JButton("");
+		btnSearchDeviceConfig.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				showSearchDeviceConfigurationFileDialog(filePath);
+			}
+		});
+		btnSearchDeviceConfig.setEnabled(false);
+		ImageIcon imgSearch = new ImageIcon(this.getClass().getResource("/search.png"));
+		btnSearchDeviceConfig.setIcon(imgSearch);
+
 		GroupLayout gl_panelGeneralInfo = new GroupLayout(panelGeneralInfo);
 		gl_panelGeneralInfo.setHorizontalGroup(gl_panelGeneralInfo.createParallelGroup(Alignment.LEADING)
 				.addGroup(gl_panelGeneralInfo.createSequentialGroup().addContainerGap()
 						.addGroup(gl_panelGeneralInfo.createParallelGroup(Alignment.LEADING)
+								.addComponent(lblDeviceParadigm)
 								.addComponent(lblDeviceName, GroupLayout.PREFERRED_SIZE, 72, GroupLayout.PREFERRED_SIZE)
-								.addComponent(lblDeviceParadigm).addComponent(lblMainEntityName)
-								.addComponent(lblConfigFile))
+								.addComponent(lblMainEntityName).addComponent(lblConfigFile).addComponent(lblLocation))
 						.addGap(18)
-						.addGroup(gl_panelGeneralInfo.createParallelGroup(Alignment.LEADING)
-								.addComponent(txtDeviceName, GroupLayout.DEFAULT_SIZE, 610, Short.MAX_VALUE)
-								.addGroup(gl_panelGeneralInfo.createSequentialGroup()
-										.addComponent(cbDeviceParadigm, GroupLayout.PREFERRED_SIZE, 156,
+						.addGroup(gl_panelGeneralInfo.createParallelGroup(Alignment.TRAILING)
+								.addGroup(gl_panelGeneralInfo.createSequentialGroup().addGroup(gl_panelGeneralInfo
+										.createParallelGroup(Alignment.LEADING)
+										.addComponent(txtMainEntityName, GroupLayout.DEFAULT_SIZE, 575, Short.MAX_VALUE)
+										.addGroup(gl_panelGeneralInfo.createSequentialGroup()
+												.addComponent(cbDeviceParadigm, GroupLayout.PREFERRED_SIZE, 251,
+														GroupLayout.PREFERRED_SIZE)
+												.addGap(36)
+												.addComponent(lblDeviceLanguage, GroupLayout.PREFERRED_SIZE, 73,
+														GroupLayout.PREFERRED_SIZE)
+												.addPreferredGap(ComponentPlacement.UNRELATED)
+												.addComponent(cbDeviceLanguage, 0, 205, Short.MAX_VALUE)))
+										.addPreferredGap(ComponentPlacement.UNRELATED)
+										.addComponent(btnMainEntitySearch, GroupLayout.PREFERRED_SIZE, 31,
 												GroupLayout.PREFERRED_SIZE)
-										.addPreferredGap(ComponentPlacement.RELATED, 221, Short.MAX_VALUE)
-										.addComponent(lblDeviceLanguage, GroupLayout.PREFERRED_SIZE, 73,
-												GroupLayout.PREFERRED_SIZE)
-										.addPreferredGap(ComponentPlacement.RELATED).addComponent(cbDeviceLanguage,
-												GroupLayout.PREFERRED_SIZE, 156, GroupLayout.PREFERRED_SIZE))
-								.addComponent(txtMainEntityName, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, 610,
-										Short.MAX_VALUE)
-								.addComponent(txtConfigFileName, GroupLayout.DEFAULT_SIZE, 610, Short.MAX_VALUE))
-						.addContainerGap()));
+										.addPreferredGap(ComponentPlacement.RELATED))
+								.addGroup(gl_panelGeneralInfo.createSequentialGroup().addGroup(gl_panelGeneralInfo
+										.createParallelGroup(Alignment.TRAILING)
+										.addComponent(txtLocation, GroupLayout.DEFAULT_SIZE, 575, Short.MAX_VALUE)
+										.addComponent(txtDeviceName, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, 575,
+												Short.MAX_VALUE)
+										.addComponent(txtConfigFileName, Alignment.LEADING, GroupLayout.DEFAULT_SIZE,
+												575, Short.MAX_VALUE))
+										.addPreferredGap(ComponentPlacement.RELATED).addComponent(btnSearchDeviceConfig,
+												GroupLayout.PREFERRED_SIZE, 31, GroupLayout.PREFERRED_SIZE)
+										.addGap(4)))
+						.addGap(4)));
 		gl_panelGeneralInfo.setVerticalGroup(gl_panelGeneralInfo.createParallelGroup(Alignment.LEADING)
 				.addGroup(gl_panelGeneralInfo.createSequentialGroup().addContainerGap()
 						.addGroup(gl_panelGeneralInfo.createParallelGroup(Alignment.BASELINE)
-								.addComponent(lblConfigFile).addComponent(txtConfigFileName, GroupLayout.PREFERRED_SIZE,
-										GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
-						.addGap(18)
-						.addGroup(gl_panelGeneralInfo.createParallelGroup(Alignment.BASELINE)
-								.addComponent(lblDeviceName).addComponent(txtDeviceName, GroupLayout.PREFERRED_SIZE,
-										GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
-						.addPreferredGap(ComponentPlacement.UNRELATED)
-						.addGroup(gl_panelGeneralInfo.createParallelGroup(Alignment.BASELINE)
-								.addComponent(lblDeviceParadigm).addComponent(lblDeviceLanguage)
-								.addComponent(cbDeviceLanguage, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
+								.addComponent(txtLocation, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
 										GroupLayout.PREFERRED_SIZE)
-								.addComponent(cbDeviceParadigm, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
-										GroupLayout.PREFERRED_SIZE))
-						.addGap(18)
-						.addGroup(gl_panelGeneralInfo.createParallelGroup(Alignment.BASELINE)
-								.addComponent(lblMainEntityName).addComponent(txtMainEntityName,
-										GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
-										GroupLayout.PREFERRED_SIZE))
-						.addContainerGap(29, Short.MAX_VALUE)));
+								.addComponent(lblLocation))
+						.addGap(16)
+						.addGroup(gl_panelGeneralInfo.createParallelGroup(Alignment.LEADING)
+								.addGroup(gl_panelGeneralInfo.createParallelGroup(Alignment.BASELINE)
+										.addComponent(lblConfigFile).addComponent(txtConfigFileName,
+												GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
+												GroupLayout.PREFERRED_SIZE))
+								.addComponent(btnSearchDeviceConfig))
+						.addGap(8)
+						.addGroup(gl_panelGeneralInfo.createParallelGroup(Alignment.TRAILING)
+								.addGroup(gl_panelGeneralInfo.createSequentialGroup()
+										.addGroup(gl_panelGeneralInfo.createParallelGroup(Alignment.TRAILING)
+												.addComponent(lblDeviceName).addComponent(txtDeviceName,
+														GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
+														GroupLayout.PREFERRED_SIZE))
+										.addPreferredGap(ComponentPlacement.UNRELATED)
+										.addGroup(gl_panelGeneralInfo.createParallelGroup(Alignment.TRAILING)
+												.addGroup(gl_panelGeneralInfo.createParallelGroup(Alignment.BASELINE)
+														.addComponent(lblDeviceParadigm).addComponent(lblDeviceLanguage)
+														.addComponent(cbDeviceLanguage, GroupLayout.PREFERRED_SIZE,
+																GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
+												.addComponent(cbDeviceParadigm, GroupLayout.PREFERRED_SIZE,
+														GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
+										.addPreferredGap(ComponentPlacement.UNRELATED)
+										.addGroup(gl_panelGeneralInfo.createParallelGroup(Alignment.BASELINE)
+												.addComponent(lblMainEntityName).addComponent(txtMainEntityName,
+														GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
+														GroupLayout.PREFERRED_SIZE)))
+								.addComponent(btnMainEntitySearch))
+						.addContainerGap(44, Short.MAX_VALUE)));
 		panelGeneralInfo.setLayout(gl_panelGeneralInfo);
 		contentPane.setLayout(gl_contentPane);
+		init(filePath);
 
 		/**
 		 * DEFAULT: WORKING WITH A .CONFIG FILE
 		 */
 
-		// If type is Config
+		List<MethodTable> methods = new ArrayList<>();
 
+		// Create Customized TableModel
+		model = new MethodTableModel(methods);
+
+		methodsTable = new JTable(model);
+		methodsTable.getTableHeader().setBackground(new Color(40, 164, 195));
+		methodsTable.getTableHeader().setForeground(Color.white);
+		methodsTable.getTableHeader().setFont(new Font("Tahoma", Font.BOLD, 11));
+		methodsTable.setShowGrid(true);
+		methodsTable.setGridColor(new Color(179, 204, 204));
+		methodsTable.setPreferredScrollableViewportSize(new Dimension(650, 120));
+		methodsTable.setFillsViewportHeight(true);
+
+		// set the column width for each column
+		setJTableColumnsWidth(methodsTable, 650, 5, 30, 35, 10, 20);
+		// Create the scroll pane and add the table to it.
+		JScrollPane scrollPane = new JScrollPane(methodsTable);
+
+		// Fiddle with the Hobby column's cell editors/renderers.
+		setUpHookTypeColumn(methodsTable, methodsTable.getColumnModel().getColumn(4));
+
+		// Add the scroll pane to this panel.
+		panelAdaptableHooks.add(scrollPane);
+
+		/**
+		 * Create "Communication" Panel
+		 */
+
+		JLabel lblCommPattern = new JLabel("Pattern");
+		cbCommPattern = new JComboBox(populateCommunicationPattern());
+
+		GroupLayout gl_panel = new GroupLayout(panelCommunication);
+		gl_panel.setHorizontalGroup(gl_panel.createParallelGroup(Alignment.LEADING)
+				.addGroup(gl_panel.createSequentialGroup().addContainerGap().addComponent(lblCommPattern).addGap(18)
+						.addComponent(cbCommPattern, 0, 646, Short.MAX_VALUE).addContainerGap()));
+		gl_panel.setVerticalGroup(gl_panel.createParallelGroup(Alignment.LEADING)
+				.addGroup(gl_panel.createSequentialGroup().addContainerGap()
+						.addGroup(gl_panel.createParallelGroup(Alignment.BASELINE)
+								.addComponent(cbCommPattern, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
+										GroupLayout.PREFERRED_SIZE)
+								.addComponent(lblCommPattern))
+						.addContainerGap(30, Short.MAX_VALUE)));
+		panelCommunication.setLayout(gl_panel);
+
+	}
+
+	private void init(String filePath) {
+		// Search device's configuration file on the same folder
 		Path path = Paths.get(filePath);
-		String pathConfigFile = searchConfigFile(path);
+		String pathConfigFile = searchConfigFileOnRoot(path);
 
 		if (pathConfigFile.isEmpty()) {
 			System.out.println("There is no configuration file!");
+			btnSearchDeviceConfig.setEnabled(true);
+
 			loadingEmptyDevice();
 			loadingDevice();
 		} else {
 			loadConfigFile(pathConfigFile);
 		}
 
-		loadingData();
-		Object[][] data = { { "1", "Class1", "myMethod1(String, String, String)", new Boolean(false), "---" },
-				{ "2", "Class1", "myMethod2(String, String, String)", new Boolean(true), "---" },
-				{ "3", "Class1", "myMethod3(String, String, String)", new Boolean(false), "---" },
-				{ "4", "Class2", "myMethod4(String, String, String)", new Boolean(true), "---" },
-				{ "5", "Class3", "myMethod5(String, String, String)", new Boolean(false), "---" } };
+	}
 
-		// Create Customized TableModel
-		MethodTableModel model = new MethodTableModel(data);
+	private String searchConfigFileOnRoot(Path path) {
+		String pathConfigFile = "";
+		try {
+			List<Path> configFiles = FileManager.findByFileName(path, configExt);
+			if (!configFiles.isEmpty()) {
+				System.out.println("Load Config File at: " + configFiles.get(0));
+				pathConfigFile = configFiles.get(0).toString();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return pathConfigFile;
+	}
 
-		JTable table = new JTable(model);
-		table.getTableHeader().setBackground(new Color(40, 164, 195));
-		table.getTableHeader().setForeground(Color.white);
-		table.getTableHeader().setFont(new Font("Tahoma", Font.BOLD, 11));
-		table.setShowGrid(true);
-		table.setGridColor(new Color(179, 204, 204));
-		table.setPreferredScrollableViewportSize(new Dimension(650, 120));
-		table.setFillsViewportHeight(true);
+	private void showSearchDeviceConfigurationFileDialog(String filePath) {
+		JFileChooser fileChooser = new JFileChooser();
+		fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+		fileChooser.setCurrentDirectory(new File(filePath));
+		fileChooser.setDialogTitle("Choose Configuration File for the device");
 
-		// set the column width for each column
-		setJTableColumnsWidth(table, 650, 5, 30, 35, 10, 20);
-		// Create the scroll pane and add the table to it.
-		JScrollPane scrollPane = new JScrollPane(table);
+		FileNameExtensionFilter jsonFilter = new FileNameExtensionFilter("Files ending in (.json)", "json");
+		fileChooser.setFileFilter(jsonFilter);
+		int response = fileChooser.showOpenDialog(this);
 
-		// Fiddle with the Hobby column's cell editors/renderers.
-		setUpHookTypeColumn(table, table.getColumnModel().getColumn(4));
-
-		// Add the scroll pane to this panel.
-		panelAdaptableHooks.add(scrollPane);
+		if (response == JFileChooser.APPROVE_OPTION) {
+			// fileChoosed = true;
+			File selectedFile = fileChooser.getSelectedFile();
+			loadConfigFile(selectedFile.getAbsolutePath());
+			System.out.println("Configuration file at: " + selectedFile.getAbsolutePath());
+		} else {
+//			fileChoosed = false;
+//			cbDeviceLang.setEnabled(false);
+//			cbDeviceType.setEnabled(false);
+		}
 
 	}
 
-	private void loadingData() {
-		//loadingDataFromJAR();
-
+	private List<MethodTable> loadingEntityMethods() {
+		List<MethodTable> methods = new ArrayList<MethodTable>();
+		methods.add(new MethodTable("M01", "FSMAdaptable", "myMethod1(String, String, String)", new Boolean(false),
+				"None of the above"));
+		methods.add(new MethodTable("M02", "FSMAdaptable", "myMethod2(String, String, String)", new Boolean(false),
+				"None of the above"));
+		methods.add(new MethodTable("M03", "FSMAdaptable", "myMethod3(String, String, String)", new Boolean(false),
+				"None of the above"));
+		methods.add(new MethodTable("M04", "FSM", "myMethod4(String, String, String)", new Boolean(false),
+				"None of the above"));
+		methods.add(new MethodTable("M05", "FSM", "myMethod5(String, String, String)", new Boolean(false),
+				"None of the above"));
+		methods.add(new MethodTable("M06", "Main", "myMethod6(String, String, String)", new Boolean(false),
+				"None of the above"));
+		return methods;
 	}
 
 	private void loadingDataFromJAR() {
 		device.getPath();
 		try {
-			Set <Class> classesFromJAR=JARManager.getClassesFromJarFile(device.getPath().toFile());
+			Set<Class> classesFromJAR = JARManager.getClassesFromJarFile(device.getPath().toFile());
 			Set<String> names = classesFromJAR.stream().map(Class::getName).collect(Collectors.toSet());
-			
+
 			Iterator iterator = names.iterator();
-			
-			//simple iteration
-			while(iterator.hasNext()){
+
+			// simple iteration
+			while (iterator.hasNext()) {
 				System.out.println(iterator.next());
 			}
-			
+
 		} catch (IOException | ClassNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-	}
-
-	private String searchConfigFile(Path path) {
-		String pathConfigFile = "";
-		try {
-			List<String> configFiles = FileManager.findFiles(path, configExt);
-			if (!configFiles.isEmpty()) {
-				System.out.println("Load Config File at: " + configFiles.get(0));
-				pathConfigFile = configFiles.get(0);
-			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return pathConfigFile;
 	}
 
 	private void loadConfigFile(String filePath) {
@@ -413,6 +513,7 @@ public class VerifyDeviceFrame extends JFrame {
 
 	public void loadingDevice() {
 		txtDeviceName.setText(device.getName());
+
 		switch (device.getParadigm()) {
 		case "POO":
 			cbDeviceParadigm.setSelectedIndex(1);
@@ -511,6 +612,88 @@ public class VerifyDeviceFrame extends JFrame {
 	}
 
 	private boolean evaluateAdaptability() {
-		return true;
+		updateDeviceFromGUI();
+		Path temp=saveTempDevice(device);
+		boolean result=runEvaluatePython(temp.toString());
+		temp.toFile().delete();
+		return result;
 	}
+
+	private void updateDeviceFromGUI() {
+		device.setName(txtDeviceName.getText());
+		device.setParadigm(cbDeviceParadigm.getSelectedItem().toString());
+		device.setMainEntity(txtMainEntityName.getText());
+		CommunicationMechanism comm = new CommunicationMechanism();
+		comm.setType(cbCommPattern.getSelectedItem().toString());
+
+		List<Hook> hooks = new ArrayList<Hook>();
+
+		for (int row = 0; row < model.getRowCount(); row++) {
+			boolean isMethodHooK = (boolean) model.getValueAt(row, 3);
+			if (isMethodHooK) {
+				MethodTable method = new MethodTable();
+				method.setId((String) model.getValueAt(row, 0));
+				method.setOwnerClass((String) model.getValueAt(row, 1));
+				method.setSignature((String) model.getValueAt(row, 2));
+				method.setHook((Boolean) model.getValueAt(row, 3));
+				method.setHookType((String) model.getValueAt(row, 4));
+
+				Hook hookMethod = new Hook();
+				hookMethod.setName(method.getSignature());
+				hookMethod.setType(method.getHookType());
+				hooks.add(hookMethod);
+			}
+		}
+
+		device.setHooks(hooks);
+		device.setCommunication(comm);
+	}
+
+	private Path saveTempDevice(UnderlyingDevice device) {
+		Path temp=null;
+		try {
+            Path path = Paths.get(MainHM2AT.repository+"\\tmp\\");
+            Files.createDirectories(path);
+            System.out.println("Temp directory created at: " + path.toString());
+            
+            // Create an temporary file
+            temp = Files.createTempFile(path,"underlying-device", ".json");
+            System.out.println("Temp file : " + temp);
+
+    		ObjectMapper mapper = new ObjectMapper();
+    		ObjectWriter writer = mapper.writer(new DefaultPrettyPrinter());
+			writer.writeValue(temp.toFile(), device);
+    		
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+		return temp;
+	}
+	
+	public static boolean runEvaluatePython(String source) {
+		boolean adaptable=false;
+		ProcessBuilder builder = new ProcessBuilder("python",
+				MainHM2AT.repository+ "\\scripts\\evaluateAdaptability.py", source);
+		builder.redirectErrorStream(true);
+		try {
+			Process process = builder.start();
+	        BufferedReader in = new BufferedReader(
+	                new InputStreamReader(process.getInputStream()));
+	            StringBuilder buffer = new StringBuilder();     
+	            String line = null;
+	            while ((line = in.readLine()) != null){           
+	                buffer.append(line);
+	            }
+	            int exitCode = process.waitFor();
+	            System.out.println("Value is: "+buffer.toString());  
+	            adaptable=buffer.toString().equalsIgnoreCase("true");
+	            System.out.println("Process exit value:"+exitCode);        
+	            in.close();
+
+		} catch (IOException | InterruptedException e) {
+			e.printStackTrace();
+		}
+		return adaptable;
+	}
+
 }

@@ -47,6 +47,11 @@
 			<artifactId>jackson-databind</artifactId>
 			<version>2.14.1</version>
 		</dependency>
+		<dependency>
+			<groupId>org.rossedth</groupId>
+			<artifactId>HM2AT-admin</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
 		<!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core -->
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>

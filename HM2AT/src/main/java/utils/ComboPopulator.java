@@ -3,7 +3,17 @@ package utils;
 import java.lang.StackWalker.Option;
 import java.util.ArrayList;
 
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
+import javax.swing.JLabel;
+
+import org.rossedth.hm2aTool.MainHM2AT;
+
+import frames.DependencyPanel;
+import logic.AdaptivityModel;
+import logic.AdaptivityModelImplementation;
+import logic.ImplementationDependency;
+import logic.ImplementationExample;
 
 public class ComboPopulator {
 
@@ -18,6 +28,22 @@ public class ComboPopulator {
 			combo.addItem(value);
 		}
 	}
+	
+	public static void populateModelfromRepository(JComboBox<AdaptivityModel> combo) {
+//		for (AdaptivityModel model : MainHM2AT.models) {
+//			combo.addItem(model.getName());
+//		}
+		DefaultComboBoxModel<AdaptivityModel> defaultComboBoxModel= new DefaultComboBoxModel<AdaptivityModel>();
+		
+		for(AdaptivityModel model: MainHM2AT.models) {
+			defaultComboBoxModel.addElement(model);
+		}
+		
+		combo.setModel(defaultComboBoxModel);
+		combo.setRenderer(new ModelListCellRenderer());
+
+	}
+	
 	
 	public static void populateProgrammingLanguage(JComboBox<String> combo) {
 		ArrayList<String> options = new ArrayList<String>();
@@ -113,6 +139,48 @@ public class ComboPopulator {
 		for (String value : options) {
 			combo.addItem(value);
 		}	
+	}
+
+	public static void populateImplementationfromModel(JComboBox<AdaptivityModelImplementation> combo, String modelId) {
+		DefaultComboBoxModel<AdaptivityModelImplementation> defaultComboBoxImplementation= new DefaultComboBoxModel<AdaptivityModelImplementation>();
+		
+		for(AdaptivityModelImplementation implementation: MainHM2AT.implementations) {
+			if(implementation.getModel(MainHM2AT.models).getId().equalsIgnoreCase(modelId)) {
+				defaultComboBoxImplementation.addElement(implementation);				
+			}
+		}
+		
+		combo.setModel(defaultComboBoxImplementation);
+		combo.setRenderer(new ImplementationListCellRenderer());
+
+	}
+	
+	public static void populateDepManagerfromImplementation(JComboBox<ImplementationDependency> combo, String implementationId) {
+		DefaultComboBoxModel<ImplementationDependency> defaultComboBoxDependency= new DefaultComboBoxModel<ImplementationDependency>();
+		
+		for(ImplementationDependency dependency: MainHM2AT.dependencies) {
+			if(dependency.getImplementation(MainHM2AT.implementations).getId().equalsIgnoreCase(implementationId)) {
+				defaultComboBoxDependency.addElement(dependency);				
+			}
+		}
+		
+		combo.setModel(defaultComboBoxDependency);
+		combo.setRenderer(new DependencyListCellRenderer());
+
+	}
+	
+	public static void populateExamplefromImplementation(JComboBox<ImplementationExample> combo, String implementationId) {
+		DefaultComboBoxModel<ImplementationExample> defaultComboBoxExample= new DefaultComboBoxModel<ImplementationExample>();
+		
+		for(ImplementationExample example: MainHM2AT.examples) {
+			if(example.getImplementation(MainHM2AT.implementations).getId().equalsIgnoreCase(implementationId)) {
+				defaultComboBoxExample.addElement(example);				
+			}
+		}
+		
+		combo.setModel(defaultComboBoxExample);
+		combo.setRenderer(new ExampleListCellRenderer());
+
 	}
 	
 }

@@ -3,6 +3,7 @@ package frames;
 import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.Desktop;
 import java.awt.EventQueue;
@@ -25,6 +26,8 @@ import java.net.URI;
 import java.net.URISyntaxException;
 
 import javax.swing.BorderFactory;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
 import javax.swing.ImageIcon;
@@ -34,6 +37,7 @@ import javax.swing.JEditorPane;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -44,9 +48,17 @@ import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 
+import logic.AdaptivityModel;
+import logic.AdaptivityModelImplementation;
+import logic.ImplementationDependency;
+import logic.ImplementationExample;
+import utils.ComboPopulator;
 import utils.FileManager;
+import utils.XMLManager;
 
 import javax.swing.border.EtchedBorder;
+import javax.swing.JTextField;
+import org.rossedth.hm2aTool.MainHM2AT;
 
 public class GenericModeFrame extends JFrame {
 	final static String EXAMPLEPANEL = "Examples";
@@ -54,21 +66,40 @@ public class GenericModeFrame extends JFrame {
 	final static String CODEPANEL = "Code";
 
 	// booleans to control visibility on combo boxes
-	private boolean selectedModel=true;
+	private boolean hasSelectedModel=true;
 	private boolean selectedLangModel;
+	
+
+	
+	private JComboBox<AdaptivityModelImplementation> cbImplementationName;
 	private boolean paradigm;
 	private boolean language;
 	private boolean type;
 	
 	private JPanel panelCoding;
+	private JComboBox cbCodeLanguage;
+	private JComboBox cbCodeParadigm;
+	private JComboBox cbCodeTypeFile;
+	
+	private JPanel tabDependencyPanel;
+	private JComboBox cbDependencyManager;
 	private JEditorPane txtAreaDependency;
 	private String dependencyData=""; 
 
+	private JPanel tabExamplePanel;
 	private boolean exampleName;
 	private boolean exampleLang;
-
+	private JComboBox cbExampleName;
+	private JComboBox cbExampleLanguage;
+	
 	private JPanel contentPane;
+	private JComboBox cbModelApproach;
 
+	private AdaptivityModel selectedModel;
+	private AdaptivityModelImplementation selectedImplementation;
+	private ImplementationDependency selectedDependency;
+	private ImplementationExample selectedExample;
+	
 	/**
 	 * Launch the application.
 	 */
@@ -147,51 +178,58 @@ public class GenericModeFrame extends JFrame {
 					} else {
 						selectedLangModel=false;
 					}
-					btnModelingDownload.setEnabled(selectedModel&&selectedLangModel);
-					//setEnabledAtPanel(panelCoding, selectedModel&&selectedLangModel);
-
+					btnModelingDownload.setEnabled(hasSelectedModel&&selectedLangModel);
 				}
 			}
 		});
 
+		
+	
 		JLabel lblModelInstance = new JLabel("Name");
-		JComboBox cbModelInstance = new JComboBox(populateModelInstance());
+		JComboBox<AdaptivityModel> cbModelInstance = new JComboBox<AdaptivityModel>();
+		ComboPopulator.populateModelfromRepository(cbModelInstance);
+
+
 		cbModelInstance.addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent e) {
 				if (cbModelInstance.getSelectedIndex()!=-1) {
-					selectedModel=true;
+					hasSelectedModel=true;
+					selectedModel=(AdaptivityModel)cbModelInstance.getSelectedItem();
+					// select the corresponding language
+					cbModelLanguage.setSelectedItem(selectedModel.getLanguage());
+					cbModelApproach.setSelectedItem(selectedModel.getApproach());
+					// populate the implementation comboBox
+					ComboPopulator.populateImplementationfromModel(cbImplementationName,selectedModel.getId());
 				}else {
-					selectedModel=false;
+					hasSelectedModel=false;
 				}
-				btnModelingDownload.setEnabled(selectedModel&&selectedLangModel);
-				//setEnabledAtPanel(panelCoding, selectedModel&&selectedLangModel);
+				btnModelingDownload.setEnabled(hasSelectedModel&&selectedLangModel);
 			}
 		});
 		
 		JLabel lblModelApproach = new JLabel("Approach");
-		JComboBox cbModelApproach = new JComboBox(populateModelApproach());
+		cbModelApproach = new JComboBox(populateModelApproach());
 
 		GroupLayout gl_panelModeling = new GroupLayout(panelModeling);
 		gl_panelModeling.setHorizontalGroup(
 			gl_panelModeling.createParallelGroup(Alignment.TRAILING)
 				.addGroup(gl_panelModeling.createSequentialGroup()
 					.addGap(26)
+					.addGroup(gl_panelModeling.createParallelGroup(Alignment.LEADING)
+						.addComponent(lblModelInstance, GroupLayout.PREFERRED_SIZE, 47, GroupLayout.PREFERRED_SIZE)
+						.addGroup(gl_panelModeling.createParallelGroup(Alignment.TRAILING)
+							.addComponent(lblModelApproach)
+							.addComponent(lblModelLanguage)))
+					.addGap(27)
 					.addGroup(gl_panelModeling.createParallelGroup(Alignment.TRAILING)
-						.addGroup(gl_panelModeling.createSequentialGroup()
-							.addGroup(gl_panelModeling.createParallelGroup(Alignment.LEADING)
-								.addComponent(lblModelInstance, GroupLayout.PREFERRED_SIZE, 47, GroupLayout.PREFERRED_SIZE)
-								.addGroup(gl_panelModeling.createParallelGroup(Alignment.TRAILING)
-									.addComponent(lblModelApproach)
-									.addComponent(lblModelLanguage)))
-							.addGap(27)
-							.addGroup(gl_panelModeling.createParallelGroup(Alignment.TRAILING)
-								.addComponent(cbModelInstance, 0, 155, Short.MAX_VALUE)
-								.addComponent(cbModelLanguage, Alignment.LEADING, 0, 155, Short.MAX_VALUE)
-								.addComponent(cbModelApproach, 0, 155, Short.MAX_VALUE))
-							.addGap(266))
-						.addGroup(gl_panelModeling.createSequentialGroup()
-							.addComponent(btnModelingDownload, GroupLayout.PREFERRED_SIZE, 88, GroupLayout.PREFERRED_SIZE)
-							.addContainerGap())))
+						.addComponent(cbModelInstance, 0, 155, Short.MAX_VALUE)
+						.addComponent(cbModelLanguage, Alignment.LEADING, 0, 155, Short.MAX_VALUE)
+						.addComponent(cbModelApproach, 0, 155, Short.MAX_VALUE))
+					.addGap(266))
+				.addGroup(gl_panelModeling.createSequentialGroup()
+					.addContainerGap(423, Short.MAX_VALUE)
+					.addComponent(btnModelingDownload, GroupLayout.PREFERRED_SIZE, 88, GroupLayout.PREFERRED_SIZE)
+					.addContainerGap())
 		);
 		gl_panelModeling.setVerticalGroup(
 			gl_panelModeling.createParallelGroup(Alignment.TRAILING)
@@ -205,14 +243,12 @@ public class GenericModeFrame extends JFrame {
 						.addComponent(lblModelLanguage)
 						.addComponent(cbModelLanguage, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
 					.addPreferredGap(ComponentPlacement.UNRELATED)
-					.addGroup(gl_panelModeling.createParallelGroup(Alignment.LEADING)
-						.addGroup(gl_panelModeling.createSequentialGroup()
-							.addGap(47)
-							.addComponent(btnModelingDownload))
-						.addGroup(gl_panelModeling.createParallelGroup(Alignment.BASELINE)
-							.addComponent(lblModelApproach)
-							.addComponent(cbModelApproach, GroupLayout.PREFERRED_SIZE, 22, GroupLayout.PREFERRED_SIZE)))
-					.addContainerGap(27, Short.MAX_VALUE))
+					.addGroup(gl_panelModeling.createParallelGroup(Alignment.BASELINE)
+						.addComponent(lblModelApproach)
+						.addComponent(cbModelApproach, GroupLayout.PREFERRED_SIZE, 22, GroupLayout.PREFERRED_SIZE))
+					.addGap(4)
+					.addComponent(btnModelingDownload)
+					.addContainerGap(48, Short.MAX_VALUE))
 		);
 		panelModeling.setLayout(gl_panelModeling);
 
@@ -232,10 +268,10 @@ public class GenericModeFrame extends JFrame {
 					.addContainerGap()
 					.addGroup(gl_panelCoding.createParallelGroup(Alignment.LEADING)
 						.addGroup(gl_panelCoding.createSequentialGroup()
-							.addComponent(panelModeling, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-							.addContainerGap())
-						.addGroup(Alignment.TRAILING, gl_panelCoding.createSequentialGroup()
 							.addComponent(panelCoding, GroupLayout.DEFAULT_SIZE, 533, Short.MAX_VALUE)
+							.addContainerGap())
+						.addGroup(gl_panelCoding.createSequentialGroup()
+							.addComponent(panelModeling, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
 							.addContainerGap())
 						.addGroup(Alignment.TRAILING, gl_panelCoding.createSequentialGroup()
 							.addComponent(btnBack)
@@ -247,9 +283,9 @@ public class GenericModeFrame extends JFrame {
 			gl_panelCoding.createParallelGroup(Alignment.TRAILING)
 				.addGroup(gl_panelCoding.createSequentialGroup()
 					.addContainerGap()
-					.addComponent(panelModeling, GroupLayout.DEFAULT_SIZE, 190, Short.MAX_VALUE)
+					.addComponent(panelModeling, GroupLayout.PREFERRED_SIZE, 166, GroupLayout.PREFERRED_SIZE)
 					.addGap(18)
-					.addComponent(panelCoding, GroupLayout.PREFERRED_SIZE, 281, GroupLayout.PREFERRED_SIZE)
+					.addComponent(panelCoding, GroupLayout.PREFERRED_SIZE, 305, Short.MAX_VALUE)
 					.addGap(32)
 					.addGroup(gl_panelCoding.createParallelGroup(Alignment.BASELINE)
 						.addComponent(btnBack)
@@ -280,8 +316,42 @@ public class GenericModeFrame extends JFrame {
 		});
 		btnCodeDownload.setEnabled(false);
 
+		JLabel lblImplementationName = new JLabel("Name");
+		
+		cbImplementationName = new JComboBox<AdaptivityModelImplementation>();
+		cbImplementationName.addItemListener(new ItemListener() {
+			public void itemStateChanged(ItemEvent e) {
+                if(e.getStateChange() == ItemEvent.SELECTED) {
+
+                    // Code Panel                    
+                    selectedImplementation=(AdaptivityModelImplementation)cbImplementationName.getSelectedItem();
+                    cbCodeLanguage.setSelectedItem(selectedImplementation.getProgrammingLang());
+                    cbCodeParadigm.setSelectedItem(selectedImplementation.getParadigm());
+                    cbCodeTypeFile.setSelectedItem(selectedImplementation.getType());
+                    
+                    // Dependency Panel
+                    enableComponents(tabDependencyPanel, true);
+                    ComboPopulator.populateDepManagerfromImplementation(cbDependencyManager, selectedImplementation.getId());;
+                    if (cbDependencyManager.getModel().getSize()==1) {
+                    	selectedDependency=(ImplementationDependency)cbDependencyManager.getSelectedItem();
+        				prettyPrintXML(selectedDependency.getSpec());   
+                    }
+                    
+                    // Example Panel
+                    enableComponents(tabExamplePanel, true);
+                    ComboPopulator.populateExamplefromImplementation(cbExampleName, selectedImplementation.getId());
+                    if (cbExampleName.getModel().getSize()==1) {
+                    	selectedExample=(ImplementationExample)cbExampleName.getSelectedItem();
+                    	exampleName=true;
+                    	cbExampleLanguage.setSelectedItem(selectedExample.getProgrammingLang()); 
+                    }
+                }
+				
+			}
+		});
+		
 		JLabel lblCodeLanguage = new JLabel("Language");
-		JComboBox cbCodeLanguage = new JComboBox(populateCodeLanguage());
+		cbCodeLanguage = new JComboBox(populateCodeLanguage());
 		cbCodeLanguage.addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent e) {
 				if (e.getSource() == cbCodeLanguage) {
@@ -298,7 +368,7 @@ public class GenericModeFrame extends JFrame {
 		});
 
 		JLabel lblCodeParadigm = new JLabel("Paradigm");
-		JComboBox cbCodeParadigm = new JComboBox(populateCodeParadigm());
+		cbCodeParadigm = new JComboBox(populateCodeParadigm());
 		cbCodeParadigm.addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent e) {
 				if (e.getSource() == cbCodeParadigm) {
@@ -314,7 +384,7 @@ public class GenericModeFrame extends JFrame {
 		});
 
 		JLabel lblCodeTypeFile = new JLabel("Type of file");
-		JComboBox cbCodeTypeFile = new JComboBox(populateCodeTypeFile());
+		cbCodeTypeFile = new JComboBox(populateCodeTypeFile());
 		cbCodeTypeFile.addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent e) {
 				if (e.getSource() == cbCodeTypeFile) {
@@ -329,31 +399,42 @@ public class GenericModeFrame extends JFrame {
 			}
 
 		});
+		
 
 		GroupLayout gl_tabCodePanel = new GroupLayout(tabCodePanel);
 		gl_tabCodePanel.setHorizontalGroup(
-			gl_tabCodePanel.createParallelGroup(Alignment.TRAILING)
+			gl_tabCodePanel.createParallelGroup(Alignment.LEADING)
 				.addGroup(gl_tabCodePanel.createSequentialGroup()
-					.addContainerGap(427, Short.MAX_VALUE)
-					.addComponent(btnCodeDownload)
-					.addContainerGap())
-				.addGroup(Alignment.LEADING, gl_tabCodePanel.createSequentialGroup()
 					.addGap(22)
 					.addGroup(gl_tabCodePanel.createParallelGroup(Alignment.LEADING)
 						.addComponent(lblCodeParadigm, GroupLayout.PREFERRED_SIZE, 55, GroupLayout.PREFERRED_SIZE)
 						.addComponent(lblCodeTypeFile)
-						.addComponent(lblCodeLanguage, GroupLayout.PREFERRED_SIZE, 73, GroupLayout.PREFERRED_SIZE))
+						.addComponent(lblCodeLanguage, GroupLayout.PREFERRED_SIZE, 73, GroupLayout.PREFERRED_SIZE)
+						.addComponent(lblImplementationName))
 					.addGap(18)
 					.addGroup(gl_tabCodePanel.createParallelGroup(Alignment.LEADING)
-						.addComponent(cbCodeLanguage, 0, 156, Short.MAX_VALUE)
-						.addComponent(cbCodeParadigm, Alignment.TRAILING, 0, 156, Short.MAX_VALUE)
-						.addComponent(cbCodeTypeFile, Alignment.TRAILING, 0, 156, Short.MAX_VALUE))
-					.addGap(247))
+						.addGroup(gl_tabCodePanel.createSequentialGroup()
+							.addGroup(gl_tabCodePanel.createParallelGroup(Alignment.LEADING)
+								.addComponent(cbCodeLanguage, 0, 156, Short.MAX_VALUE)
+								.addComponent(cbCodeParadigm, Alignment.TRAILING, 0, 156, Short.MAX_VALUE)
+								.addComponent(cbCodeTypeFile, Alignment.TRAILING, 0, 156, Short.MAX_VALUE))
+							.addGap(247))
+						.addGroup(gl_tabCodePanel.createSequentialGroup()
+							.addComponent(cbImplementationName, GroupLayout.PREFERRED_SIZE, 313, GroupLayout.PREFERRED_SIZE)
+							.addContainerGap())))
+				.addGroup(Alignment.TRAILING, gl_tabCodePanel.createSequentialGroup()
+					.addContainerGap(427, Short.MAX_VALUE)
+					.addComponent(btnCodeDownload)
+					.addContainerGap())
 		);
 		gl_tabCodePanel.setVerticalGroup(
 			gl_tabCodePanel.createParallelGroup(Alignment.TRAILING)
 				.addGroup(gl_tabCodePanel.createSequentialGroup()
-					.addContainerGap(50, Short.MAX_VALUE)
+					.addContainerGap(16, Short.MAX_VALUE)
+					.addGroup(gl_tabCodePanel.createParallelGroup(Alignment.BASELINE)
+						.addComponent(lblImplementationName)
+						.addComponent(cbImplementationName, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
+					.addGap(18)
 					.addGroup(gl_tabCodePanel.createParallelGroup(Alignment.BASELINE)
 						.addComponent(lblCodeParadigm)
 						.addComponent(cbCodeParadigm, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
@@ -365,9 +446,9 @@ public class GenericModeFrame extends JFrame {
 					.addGroup(gl_tabCodePanel.createParallelGroup(Alignment.BASELINE)
 						.addComponent(lblCodeTypeFile)
 						.addComponent(cbCodeTypeFile, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
-					.addGap(48)
+					.addGap(34)
 					.addComponent(btnCodeDownload)
-					.addContainerGap())
+					.addGap(25))
 		);
 		tabCodePanel.setLayout(gl_tabCodePanel);
 		//setEnabledAtPanel(tabCodePanel, false);
@@ -375,31 +456,43 @@ public class GenericModeFrame extends JFrame {
 		/**
 		 *  "DEPENDENCY" TAB
 		 */
-		JPanel tabDependencyPanel = new JPanel();
+		tabDependencyPanel = new JPanel();
+		enableComponents(tabDependencyPanel, false);
 		tabbedCodingPane.addTab(DEPENDENCYPANEL, null, tabDependencyPanel, null);
-
 		
 		JLabel lblDependencyManager = new JLabel("Dependency Manager");
-		JComboBox cbDependencyManager = new JComboBox(populateDependencyManager());
+		cbDependencyManager = new JComboBox();
 		cbDependencyManager.addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent e) {
-				switch(cbDependencyManager.getSelectedIndex()) {
-				case 1: 
-					InputStream inputStream = this.getClass().getResourceAsStream("/dependency-POM.xml");
-					try {
-						dependencyData = readFromPOM(inputStream);
-						txtAreaDependency.setText(dependencyData);
-					} catch (IOException e1) {
-						e1.printStackTrace();
-					}
-					break;
-				case 2:
-					break;
-					
-				default: dependencyData="Dependency not available";
-				}
+                if(e.getStateChange() == ItemEvent.SELECTED) {
+                	selectedDependency=(ImplementationDependency)cbDependencyManager.getSelectedItem();
+    				prettyPrintXML(selectedDependency.getSpec());             	
+                }
 			}
 		});
+//		cbDependencyManager.addItemListener(new ItemListener() {
+//			public void itemStateChanged(ItemEvent e) {
+//				ImplementationDependency dependency=(ImplementationDependency)cbDependencyManager.getSelectedItem();
+//				XMLManager.XMLPrettyPrint(dependency.getSpec());
+//				txtAreaDependency.setText(dependencyData);
+//
+////				switch(cbDependencyManager.getSelectedIndex()) {
+////				case 1: 
+////					InputStream inputStream = this.getClass().getResourceAsStream("/dependency-POM.xml");
+////					try {
+////						dependencyData = readFromPOM(inputStream);
+////						txtAreaDependency.setText(dependencyData);
+////					} catch (IOException e1) {
+////						e1.printStackTrace();
+////					}
+////					break;
+////				case 2:
+////					break;
+////					
+////				default: dependencyData="Dependency not available";
+////				}
+//			}
+//		});
 		
 		JButton btnDependencyDownload = new JButton("Download");
 		btnDependencyDownload.addActionListener(new ActionListener() {
@@ -467,7 +560,7 @@ public class GenericModeFrame extends JFrame {
 		 * "EXAMPLE" TAB
 		 */
 		
-		JPanel tabExamplePanel = new JPanel();
+		tabExamplePanel = new JPanel();
 		tabbedCodingPane.addTab(EXAMPLEPANEL, null, tabExamplePanel, null);
 
 		JTextArea txtPaneExampleDesc = new JTextArea();
@@ -498,36 +591,35 @@ public class GenericModeFrame extends JFrame {
 		btnExampleDownload.setFont(new Font("Arial", Font.PLAIN, 10));
 
 		JLabel lblExampleName = new JLabel("Name");
-		JComboBox cbExampleName = new JComboBox(populateExamples());
+		cbExampleName = new JComboBox(populateExamples());
 		cbExampleName.addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent e) {
-				if (e.getSource() == cbExampleName) {
-					if (cbExampleName.getSelectedIndex() != 0) {
-						txtPaneExampleDesc.setVisible(true);
-						exampleName = true;
-					} else {
-						txtPaneExampleDesc.setVisible(false);
-						exampleName = false;
-					}
-
-				}
-				btnExampleDownload.setEnabled(checkCompleteOptions(exampleName, exampleLang, true));
+                if(e.getStateChange() == ItemEvent.SELECTED) {
+                	selectedExample=(ImplementationExample)cbExampleName.getSelectedItem();
+					txtPaneExampleDesc.setVisible(true);
+					exampleName = true;
+					btnExampleDownload.setEnabled(checkCompleteOptions(exampleName, exampleLang, true));
+                }
 			}
 		});
 
 		JLabel lblExampleLanguage = new JLabel("Language");
-		JComboBox cbExampleLanguage = new JComboBox(populateCodeLanguage());
+		cbExampleLanguage = new JComboBox(populateCodeLanguage());
 		cbExampleLanguage.addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent e) {
-				if (e.getSource() == cbExampleLanguage) {
-					if (cbExampleLanguage.getSelectedIndex() != 0) {
-						exampleLang = true;
-					} else {
-						exampleLang = false;
-					}
-
-				}
-				btnExampleDownload.setEnabled(checkCompleteOptions(exampleName, exampleLang, true));
+                if(e.getStateChange() == ItemEvent.SELECTED) {
+                	exampleLang = true;
+    				btnExampleDownload.setEnabled(checkCompleteOptions(exampleName, exampleLang, true));
+                }
+//				if (e.getSource() == cbExampleLanguage) {
+//					if (cbExampleLanguage.getSelectedIndex() != 0) {
+//						exampleLang = true;
+//					} else {
+//						exampleLang = false;
+//					}
+//
+//				}
+//				btnExampleDownload.setEnabled(checkCompleteOptions(exampleName, exampleLang, true));
 			}
 		});
 
@@ -609,11 +701,6 @@ public class GenericModeFrame extends JFrame {
 	 * METHODS TO POPULATE COMBOXES
 	 */
 
-	private String[] populateModelInstance() {
-		// TODO Auto-generated method stub
-		String[] options = { "[Holistic] Basic", "[O.C.] Basic", "[A.C.] Simple", "[Holistic] 3Comp." };
-		return options;
-	}
 
 	private String[] populateModelLanguage() {
 		// TODO Auto-generated method stub
@@ -657,6 +744,7 @@ public class GenericModeFrame extends JFrame {
 		return options;
 	}
 
+	
 	/**
 	 * METHODS TO SHOW DIALOGS
 	 */
@@ -664,13 +752,17 @@ public class GenericModeFrame extends JFrame {
 	private void showSaveModelDialog() {
 		JFileChooser fileChooser = new JFileChooser();
 		// The extension of the file should be choose according to the modeling language
-		fileChooser.setSelectedFile(new File("model.uml"));
+		String suggestedFileName="model";
+		if(selectedModel!=null){
+			suggestedFileName=selectedModel.getSourcePath().getFileName().toString();
+		}
+		fileChooser.setSelectedFile(new File(suggestedFileName));
 		fileChooser.setDialogTitle("Save model as ");
 		int response = fileChooser.showSaveDialog(this);
 		if (response == JFileChooser.APPROVE_OPTION) {
 			File selectedFile = fileChooser.getSelectedFile();
 			try {
-				FileManager.copyFileNIO("C:\\Users\\rosed\\Downloads\\newBasicModel.uml", selectedFile.getPath());
+				FileManager.copyFileNIO(selectedModel.getSourcePath().toString(), selectedFile.getPath());
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -681,10 +773,21 @@ public class GenericModeFrame extends JFrame {
 
 	private void showSaveCodeDialog() {
 		JFileChooser fileChooser = new JFileChooser();
-		fileChooser.setDialogTitle("Save Code as ");
+		String suggestedFileName="implementation";
+		if(selectedImplementation!=null){
+			suggestedFileName=selectedImplementation.getSourcePath().getFileName().toString();
+		}
+		fileChooser.setSelectedFile(new File(suggestedFileName));
+		fileChooser.setDialogTitle("Save Implementation as ");
 		int response = fileChooser.showSaveDialog(this);
 		if (response == JFileChooser.APPROVE_OPTION) {
 			File selectedFile = fileChooser.getSelectedFile();
+			try {
+				FileManager.copyFileNIO(selectedImplementation.getSourcePath().toString(), selectedFile.getPath());
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			System.out.println("Save as file: " + selectedFile.getAbsolutePath());
 		}
 	}
@@ -693,22 +796,39 @@ public class GenericModeFrame extends JFrame {
 
 	private void showSaveDependencyDialog() {
 		JFileChooser fileChooser = new JFileChooser();
+		String suggestedFileName="dependency.xml";
+		fileChooser.setSelectedFile(new File(suggestedFileName));
 		fileChooser.setDialogTitle("Save Dependency as ");
-		fileChooser.setSelectedFile(new File("dependency.xml"));
 		int response = fileChooser.showSaveDialog(this);
 		if (response == JFileChooser.APPROVE_OPTION) {
 			File selectedFile = fileChooser.getSelectedFile();
-			//Document doc = convertXMLFileToXMLDocument( xmlFilePath );
+			try {
+				FileManager.copyFileNIO(selectedDependency.getSourcePath().toString(), selectedFile.getPath());
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			System.out.println("Save as file: " + selectedFile.getAbsolutePath());
 		}
 	}
 
 	private void showSaveExampleDialog() {
 		JFileChooser fileChooser = new JFileChooser();
+		String suggestedFileName="example";
+		if(selectedExample!=null){
+			suggestedFileName=selectedExample.getSourcePath().getFileName().toString();
+		}
+		fileChooser.setSelectedFile(new File(suggestedFileName));
 		fileChooser.setDialogTitle("Save Example as ");
 		int response = fileChooser.showSaveDialog(this);
 		if (response == JFileChooser.APPROVE_OPTION) {
 			File selectedFile = fileChooser.getSelectedFile();
+			try {
+				FileManager.copyFileNIO(selectedExample.getSourcePath().toString(), selectedFile.getPath());
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			System.out.println("Save as file: " + selectedFile.getAbsolutePath());
 		}
 	}
@@ -739,8 +859,19 @@ public class GenericModeFrame extends JFrame {
 		return paradigm && language && type;
 	}
 	
-	private void setEnabledAtPanel(JPanel panel, boolean visible) {
-		for (Component component : panel.getComponents())
-		  component.setEnabled(visible);
+	public void enableComponents(Container container, boolean enable) {
+		Component[] components = container.getComponents();
+		for (Component component : components) {
+			component.setEnabled(enable);
+			if (component instanceof Container) {
+				enableComponents((Container) component, enable);
+			}
+		}
+	}
+	
+	public void prettyPrintXML(String XMLString) {
+		String dependencyXML=XMLManager.prettyFormat(XMLString,2);
+		System.out.println(dependencyXML);
+		txtAreaDependency.setText(XMLString);
 	}
 }

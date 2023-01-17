@@ -36,9 +36,11 @@ public class App {
 		/* Create and display the form */
 		java.awt.EventQueue.invokeLater(new Runnable() {
 			public void run() {
-				if (loadRepository()) {
+				MainHM2AT main=new MainHM2AT();
+				
+				if (main.loadRepository()) {
 					Repository.verifyStructure(repo);
-					Repository.updateIndexes(repo);			
+					Repository.updateIndexes(repo);
 					Loading loadingScreen = new Loading(null, true);
 					loadingScreen.setVisible(true);
 					ToolModeFrame modeframe = new ToolModeFrame();
@@ -46,37 +48,5 @@ public class App {
 				}
 			}
 		});
-	}
-
-	private static boolean loadRepository() {
-		boolean result = false;
-		List<Path> paths = new ArrayList<>();
-		try {
-			paths = FileManager.findByFileName(Paths.get("").toAbsolutePath(), "repo-config.json");
-			switch (paths.size()) {
-			case 1:
-				ObjectMapper mapper = new ObjectMapper();
-				try {
-					repo = mapper.readValue(paths.get(0).toFile(), Repository.class);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				result = true;
-				break;
-			case 0:
-				JOptionPane.showMessageDialog(null, "There is NO configuration file for the repository." + "\n"
-						+ "Can't load the tool without the repository.");
-				result = false;
-				break;
-			default:
-				JOptionPane.showMessageDialog(null, "There should be ONLY one configuration file for the repository."
-						+ "\n" + "Can't load the tool");
-				result = false;
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-		return result;
 	}
 }

@@ -1,16 +1,16 @@
 package logic;
 
 public class CommunicationMechanism {
-private String mechanism;
+//private String mechanism;
 private String type;
 private String name;
 
-public String getMechanism() {
-	return mechanism;
-}
-public void setMechanism(String mechanism) {
-	this.mechanism = mechanism;
-}
+//public String getMechanism() {
+//	return mechanism;
+//}
+//public void setMechanism(String mechanism) {
+//	this.mechanism = mechanism;
+//}
 public String getType() {
 	return type;
 }
