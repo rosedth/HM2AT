@@ -32,6 +32,8 @@ import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rtextarea.RTextScrollPane;
 
+import logic.AdaptivityModel;
+import logic.AdaptivityModelImplementation;
 import logic.UnderlyingDevice;
 import utils.ComboPopulator;
 import utils.Scriptor;
@@ -56,15 +58,20 @@ public class SpecificModeFrame extends JFrame {
 	
 	// Adaptive Logic controls
 	private JTabbedPane tabbedPaneAdaptiveLayer;
-	JComboBox cbDeviceModel;
+	JComboBox<AdaptivityModel> cbDeviceModel;
 	JComboBox cbModelProgLang;
 	boolean modelChoosed;
 	boolean langChoosed;
+	boolean implementationChoosed;
 	boolean activateTabbedPanel;
 	private JTextField txtEntityName;
 	JButton btnLoadModel;
 	RSyntaxTextArea txtEditor;
 	JButton btnDownload;
+
+	AdaptivityModel selectedModel;
+	AdaptivityModelImplementation selectedImplementation;
+	private JComboBox<AdaptivityModelImplementation> cbImplementationName;
 	
 	/**
 	 * Launch the application.
@@ -88,7 +95,7 @@ public class SpecificModeFrame extends JFrame {
 	public SpecificModeFrame() {
 		device = null;
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 600, 754);
+		setBounds(100, 100, 600, 800);
 		String title = "HM" + "\u00B2" + "AT " + " - Specific Mode";
 		setTitle(title);
 		setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource("/IconHM2AT.png")));
@@ -129,7 +136,7 @@ public class SpecificModeFrame extends JFrame {
 		txtDeviceLocation.setColumns(10);
 		txtDeviceLocation.setEditable(false);
 
-		btnDeviceVerify = new JButton("Load");
+		btnDeviceVerify = new JButton();
 		btnDeviceVerify.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				VerifyDeviceFrame verifyFrame = new VerifyDeviceFrame(txtDeviceLocation.getText(), cbDeviceLang.getSelectedItem().toString(), cbDeviceType.getSelectedItem().toString(),
@@ -138,8 +145,11 @@ public class SpecificModeFrame extends JFrame {
 				verifyFrame.setLocationRelativeTo(null);
 			}
 		});
+		ImageIcon imgLoad = new ImageIcon(this.getClass().getResource("/load.png"));
+		btnDeviceVerify.setIcon(imgLoad);
 		btnDeviceVerify.setFont(new Font("Tahoma", Font.PLAIN, 11));
 		btnDeviceVerify.setEnabled(false);
+		btnDeviceVerify.setToolTipText("Load device");
 
 		JButton btnDeviceSearch = new JButton("");
 		ImageIcon imgSearch = new ImageIcon(this.getClass().getResource("/search.png"));
@@ -184,56 +194,56 @@ public class SpecificModeFrame extends JFrame {
 			}
 		});
 		GroupLayout gl_panelDevice = new GroupLayout(panelDevice);
-		gl_panelDevice.setHorizontalGroup(gl_panelDevice.createParallelGroup(Alignment.TRAILING)
-				.addGroup(gl_panelDevice.createSequentialGroup().addContainerGap()
-						.addGroup(gl_panelDevice.createParallelGroup(Alignment.LEADING)
-								.addComponent(lblDeviceLocation, GroupLayout.PREFERRED_SIZE, 47,
-										GroupLayout.PREFERRED_SIZE)
-								.addComponent(lblDeviceLang))
-						.addGap(28)
-						.addGroup(gl_panelDevice.createParallelGroup(Alignment.LEADING)
-								.addGroup(gl_panelDevice.createSequentialGroup()
-										.addGroup(gl_panelDevice.createParallelGroup(Alignment.LEADING)
-												.addGroup(gl_panelDevice.createSequentialGroup()
-														.addComponent(lblDeviceStatus, GroupLayout.DEFAULT_SIZE, 176,
-																Short.MAX_VALUE)
-														.addGap(32))
-												.addGroup(gl_panelDevice.createSequentialGroup()
-														.addComponent(cbDeviceLang, GroupLayout.PREFERRED_SIZE, 182,
-																GroupLayout.PREFERRED_SIZE)
-														.addPreferredGap(ComponentPlacement.RELATED)))
-										.addPreferredGap(ComponentPlacement.RELATED).addComponent(lblDeviceType)
-										.addGap(22)
-										.addGroup(gl_panelDevice.createParallelGroup(Alignment.TRAILING)
-												.addComponent(btnDeviceVerify, GroupLayout.PREFERRED_SIZE, 88,
-														GroupLayout.PREFERRED_SIZE)
-												.addComponent(cbDeviceType, GroupLayout.PREFERRED_SIZE, 163,
-														GroupLayout.PREFERRED_SIZE)))
-								.addComponent(txtDeviceLocation, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, 417,
-										Short.MAX_VALUE))
-						.addPreferredGap(ComponentPlacement.RELATED)
-						.addComponent(btnDeviceSearch, GroupLayout.PREFERRED_SIZE, 24, GroupLayout.PREFERRED_SIZE)
-						.addContainerGap()));
-		gl_panelDevice.setVerticalGroup(gl_panelDevice.createParallelGroup(Alignment.LEADING).addGroup(gl_panelDevice
-				.createSequentialGroup().addGap(12)
-				.addGroup(gl_panelDevice.createParallelGroup(Alignment.TRAILING)
-						.addGroup(gl_panelDevice.createParallelGroup(Alignment.BASELINE).addComponent(lblDeviceLocation)
-								.addComponent(txtDeviceLocation, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
-										GroupLayout.PREFERRED_SIZE))
-						.addComponent(btnDeviceSearch))
-				.addGap(18)
-				.addGroup(gl_panelDevice.createParallelGroup(Alignment.LEADING).addGroup(gl_panelDevice
-						.createSequentialGroup()
-						.addGroup(gl_panelDevice.createParallelGroup(Alignment.BASELINE).addComponent(lblDeviceLang)
-								.addComponent(cbDeviceLang, GroupLayout.PREFERRED_SIZE, 23, GroupLayout.PREFERRED_SIZE))
-						.addGap(18)
-						.addComponent(lblDeviceStatus, GroupLayout.PREFERRED_SIZE, 18, GroupLayout.PREFERRED_SIZE))
+		gl_panelDevice.setHorizontalGroup(
+			gl_panelDevice.createParallelGroup(Alignment.TRAILING)
+				.addGroup(gl_panelDevice.createSequentialGroup()
+					.addContainerGap()
+					.addGroup(gl_panelDevice.createParallelGroup(Alignment.LEADING)
+						.addComponent(lblDeviceLocation, GroupLayout.PREFERRED_SIZE, 47, GroupLayout.PREFERRED_SIZE)
+						.addComponent(lblDeviceLang))
+					.addGap(28)
+					.addGroup(gl_panelDevice.createParallelGroup(Alignment.LEADING)
 						.addGroup(gl_panelDevice.createSequentialGroup()
-								.addGroup(gl_panelDevice.createParallelGroup(Alignment.BASELINE)
-										.addComponent(lblDeviceType).addComponent(cbDeviceType,
-												GroupLayout.PREFERRED_SIZE, 23, GroupLayout.PREFERRED_SIZE))
-								.addGap(18).addComponent(btnDeviceVerify)))
-				.addGap(87)));
+							.addGroup(gl_panelDevice.createParallelGroup(Alignment.LEADING)
+								.addGroup(gl_panelDevice.createSequentialGroup()
+									.addComponent(lblDeviceStatus, GroupLayout.DEFAULT_SIZE, 176, Short.MAX_VALUE)
+									.addGap(32))
+								.addComponent(cbDeviceLang, GroupLayout.PREFERRED_SIZE, 182, GroupLayout.PREFERRED_SIZE))
+							.addPreferredGap(ComponentPlacement.RELATED)
+							.addComponent(lblDeviceType)
+							.addGap(22)
+							.addComponent(cbDeviceType, GroupLayout.PREFERRED_SIZE, 163, GroupLayout.PREFERRED_SIZE))
+						.addComponent(txtDeviceLocation, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, 417, Short.MAX_VALUE))
+					.addPreferredGap(ComponentPlacement.RELATED)
+					.addGroup(gl_panelDevice.createParallelGroup(Alignment.LEADING)
+						.addComponent(btnDeviceSearch, GroupLayout.PREFERRED_SIZE, 24, GroupLayout.PREFERRED_SIZE)
+						.addComponent(btnDeviceVerify, GroupLayout.PREFERRED_SIZE, 27, GroupLayout.PREFERRED_SIZE))
+					.addContainerGap())
+		);
+		gl_panelDevice.setVerticalGroup(
+			gl_panelDevice.createParallelGroup(Alignment.LEADING)
+				.addGroup(gl_panelDevice.createSequentialGroup()
+					.addGap(12)
+					.addGroup(gl_panelDevice.createParallelGroup(Alignment.TRAILING)
+						.addGroup(gl_panelDevice.createParallelGroup(Alignment.BASELINE)
+							.addComponent(lblDeviceLocation)
+							.addComponent(txtDeviceLocation, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
+						.addComponent(btnDeviceSearch))
+					.addGap(18)
+					.addGroup(gl_panelDevice.createParallelGroup(Alignment.LEADING)
+						.addGroup(gl_panelDevice.createSequentialGroup()
+							.addGroup(gl_panelDevice.createParallelGroup(Alignment.BASELINE)
+								.addComponent(lblDeviceLang)
+								.addComponent(cbDeviceLang, GroupLayout.PREFERRED_SIZE, 23, GroupLayout.PREFERRED_SIZE))
+							.addGap(18)
+							.addComponent(lblDeviceStatus, GroupLayout.PREFERRED_SIZE, 18, GroupLayout.PREFERRED_SIZE))
+						.addGroup(gl_panelDevice.createParallelGroup(Alignment.TRAILING)
+							.addComponent(btnDeviceVerify)
+							.addGroup(gl_panelDevice.createParallelGroup(Alignment.BASELINE)
+								.addComponent(lblDeviceType)
+								.addComponent(cbDeviceType, GroupLayout.PREFERRED_SIZE, 23, GroupLayout.PREFERRED_SIZE))))
+					.addGap(31))
+		);
 		panelDevice.setLayout(gl_panelDevice);
 
 		/**
@@ -245,13 +255,16 @@ public class SpecificModeFrame extends JFrame {
 				new EtchedBorder(EtchedBorder.LOWERED, new Color(255, 255, 255), new Color(160, 160, 160)),
 				"Adaptive Logic", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
 
-		cbDeviceModel = new JComboBox(populateDeviceModel());
+		cbDeviceModel = new JComboBox<AdaptivityModel>();
+		ComboPopulator.populateModelfromRepository(cbDeviceModel);
 		cbDeviceModel.setEnabled(false);
 		modelChoosed=true;
 		cbDeviceModel.addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent e) {
 				tabbedPaneAdaptiveLayer.requestFocus();
 				modelChoosed=true;
+				selectedModel=(AdaptivityModel)cbDeviceModel.getSelectedItem();
+				ComboPopulator.populateImplementationfromModel(cbImplementationName,selectedModel.getId());
 			}
 		});
 
@@ -315,14 +328,17 @@ public class SpecificModeFrame extends JFrame {
 
 		JPanel tabExecutorPanel = new JPanel();
 		tabbedPaneAdaptiveLayer.addTab("Executor", null, tabExecutorPanel, null);
-		JLabel lblModelName = new JLabel("Model Name");
+		JLabel lblImplementationName = new JLabel("Implementation");
 
-		btnLoadModel = new JButton("Load");
+		btnLoadModel = new JButton();
 		btnLoadModel.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				loadModel(cbDeviceModel.getSelectedItem().toString(),cbModelProgLang.getSelectedItem().toString());
 			}
 		});
+		btnLoadModel.setToolTipText("Generate instance");
+		ImageIcon imgInstance = new ImageIcon(this.getClass().getResource("/instance-3.png"));
+		btnLoadModel.setIcon(imgInstance);
 		btnLoadModel.setEnabled(false);
 		
 		JLabel lblModelLanguage = new JLabel("Prog. Lang.");
@@ -341,47 +357,69 @@ public class SpecificModeFrame extends JFrame {
 		
 		btnDownload = new JButton("Download");
 		btnDownload.setEnabled(false);
-
+		
+		JLabel lblModelName = new JLabel("Model");
+		
+		cbImplementationName = new JComboBox<AdaptivityModelImplementation>();
+		cbImplementationName.addItemListener(new ItemListener() {
+			public void itemStateChanged(ItemEvent e) {
+				selectedImplementation=(AdaptivityModelImplementation)cbImplementationName.getSelectedItem();
+				implementationChoosed=true;
+				cbModelProgLang.setSelectedItem(selectedImplementation.getProgrammingLang());
+				btnLoadModel.setEnabled(langChoosed&&modelChoosed&&implementationChoosed);
+			}
+		});
 
 		// tabbedPaneAdaptiveLayer.setBackgroundAt(0, Color.CYAN);
 
 		GroupLayout gl_panelAdaptiveLayer = new GroupLayout(panelAdaptiveLayer);
 		gl_panelAdaptiveLayer.setHorizontalGroup(
-			gl_panelAdaptiveLayer.createParallelGroup(Alignment.LEADING)
-				.addGroup(Alignment.TRAILING, gl_panelAdaptiveLayer.createSequentialGroup()
+			gl_panelAdaptiveLayer.createParallelGroup(Alignment.TRAILING)
+				.addGroup(gl_panelAdaptiveLayer.createSequentialGroup()
 					.addContainerGap()
-					.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.TRAILING)
+					.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.LEADING)
 						.addComponent(btnDownload)
-						.addComponent(tabbedPaneAdaptiveLayer, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, 522, Short.MAX_VALUE)
-						.addGroup(Alignment.LEADING, gl_panelAdaptiveLayer.createSequentialGroup()
+						.addComponent(tabbedPaneAdaptiveLayer, GroupLayout.DEFAULT_SIZE, 522, Short.MAX_VALUE)
+						.addGroup(gl_panelAdaptiveLayer.createSequentialGroup()
 							.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.LEADING)
-								.addComponent(lblModelLanguage)
-								.addComponent(lblModelName))
-							.addGap(37)
+								.addGroup(gl_panelAdaptiveLayer.createSequentialGroup()
+									.addGap(21)
+									.addComponent(lblModelLanguage))
+								.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.TRAILING)
+									.addComponent(lblModelName)
+									.addComponent(lblImplementationName)))
+							.addGap(18)
 							.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.LEADING)
-								.addComponent(cbDeviceModel, 0, 157, Short.MAX_VALUE)
-								.addComponent(cbModelProgLang, 0, 157, Short.MAX_VALUE))
-							.addGap(215)
-							.addComponent(btnLoadModel)))
+								.addComponent(cbImplementationName, 0, 427, Short.MAX_VALUE)
+								.addComponent(cbDeviceModel, 0, 427, Short.MAX_VALUE)
+								.addGroup(gl_panelAdaptiveLayer.createSequentialGroup()
+									.addComponent(cbModelProgLang, 0, 157, Short.MAX_VALUE)
+									.addGap(241)
+									.addComponent(btnLoadModel, GroupLayout.PREFERRED_SIZE, 29, GroupLayout.PREFERRED_SIZE)))))
 					.addContainerGap())
 		);
 		gl_panelAdaptiveLayer.setVerticalGroup(
 			gl_panelAdaptiveLayer.createParallelGroup(Alignment.TRAILING)
 				.addGroup(gl_panelAdaptiveLayer.createSequentialGroup()
-					.addContainerGap(22, Short.MAX_VALUE)
-					.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.BASELINE)
-						.addComponent(lblModelName)
-						.addComponent(cbDeviceModel, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
 					.addGap(18)
 					.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.BASELINE)
-						.addComponent(lblModelLanguage)
-						.addComponent(cbModelProgLang, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+						.addComponent(cbDeviceModel, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+						.addComponent(lblModelName))
+					.addGap(7)
+					.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.BASELINE)
+						.addComponent(cbImplementationName, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+						.addComponent(lblImplementationName))
+					.addPreferredGap(ComponentPlacement.UNRELATED)
+					.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.LEADING)
+						.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.BASELINE)
+							.addComponent(cbModelProgLang, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+							.addComponent(lblModelLanguage))
 						.addComponent(btnLoadModel))
-					.addGap(18)
+					.addGap(36)
 					.addComponent(tabbedPaneAdaptiveLayer, GroupLayout.PREFERRED_SIZE, 312, GroupLayout.PREFERRED_SIZE)
-					.addGap(5)
+					.addGap(18)
 					.addComponent(btnDownload)
-					.addContainerGap())
+					.addGap(32))
 		);
 
 		panelAdaptiveLayer.setLayout(gl_panelAdaptiveLayer);
@@ -393,7 +431,7 @@ public class SpecificModeFrame extends JFrame {
 					.addContainerGap()
 					.addGroup(gl_contentPane.createParallelGroup(Alignment.LEADING)
 						.addComponent(panelAdaptiveLayer, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-						.addComponent(panelDevice, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+						.addComponent(panelDevice, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, 554, Short.MAX_VALUE)
 						.addGroup(Alignment.TRAILING, gl_contentPane.createSequentialGroup()
 							.addComponent(btnBack, GroupLayout.PREFERRED_SIZE, 64, GroupLayout.PREFERRED_SIZE)
 							.addPreferredGap(ComponentPlacement.RELATED)
@@ -404,11 +442,11 @@ public class SpecificModeFrame extends JFrame {
 			gl_contentPane.createParallelGroup(Alignment.TRAILING)
 				.addGroup(gl_contentPane.createSequentialGroup()
 					.addContainerGap()
-					.addComponent(panelDevice, GroupLayout.PREFERRED_SIZE, 157, GroupLayout.PREFERRED_SIZE)
-					.addPreferredGap(ComponentPlacement.UNRELATED)
-					.addComponent(panelAdaptiveLayer, GroupLayout.DEFAULT_SIZE, 474, Short.MAX_VALUE)
+					.addComponent(panelDevice, GroupLayout.PREFERRED_SIZE, 150, GroupLayout.PREFERRED_SIZE)
 					.addGap(18)
-					.addGroup(gl_contentPane.createParallelGroup(Alignment.LEADING)
+					.addComponent(panelAdaptiveLayer, GroupLayout.PREFERRED_SIZE, 522, GroupLayout.PREFERRED_SIZE)
+					.addPreferredGap(ComponentPlacement.RELATED, 32, Short.MAX_VALUE)
+					.addGroup(gl_contentPane.createParallelGroup(Alignment.BASELINE)
 						.addComponent(btnExit)
 						.addComponent(btnBack))
 					.addContainerGap())
