@@ -78,7 +78,23 @@ public class FileManager {
 		return result;
 	}
 	
+    public static List<Path> findByFilePartialName(Path path, String partialName)
+            throws IOException {
 
+        if (!Files.isDirectory(path)) {
+            throw new IllegalArgumentException("Path must be a directory!");
+        }
+
+        List<Path> result;
+        try (Stream<Path> walk = Files.walk(path)) {
+            result = walk
+                    .filter(Files::isRegularFile)   // is a file
+                    .filter(p -> p.getFileName().toString().toLowerCase().contains(partialName))
+                    .collect(Collectors.toList());
+        }
+        return result;
+
+    }
 
 	   public static Map<String,Integer> readIndexes(String from){
 	    	Map<String,Integer> indexes=new HashMap<>();
