@@ -10,6 +10,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -39,6 +41,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableColumn;
 
+import org.rossedth.FSM_Adaptable.RecognizerFSM;
 import org.rossedth.hm2aTool.MainHM2AT;
 
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
@@ -257,7 +260,8 @@ public class VerifyDeviceFrame extends JFrame {
 		JButton btnMainEntitySearch = new JButton("");
 		btnMainEntitySearch.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				List<MethodTable> methods = loadingEntityMethods();
+				// Loading the methods of the selected entity
+				List<MethodTable> methods = loadMethodsToTable();
 				model = new MethodTableModel(methods);
 				methodsTable.setModel(model);
 				setUpHookTypeColumn(methodsTable, methodsTable.getColumnModel().getColumn(4));
@@ -455,42 +459,82 @@ public class VerifyDeviceFrame extends JFrame {
 
 	}
 
-	private List<MethodTable> loadingEntityMethods() {
+	private List<MethodTable> loadMethodsToTable() {
 		List<MethodTable> methods = new ArrayList<MethodTable>();
-		methods.add(new MethodTable("M01", "FSMAdaptable", "myMethod1(String, String, String)", new Boolean(false),
-				"None of the above"));
-		methods.add(new MethodTable("M02", "FSMAdaptable", "myMethod2(String, String, String)", new Boolean(false),
-				"None of the above"));
-		methods.add(new MethodTable("M03", "FSMAdaptable", "myMethod3(String, String, String)", new Boolean(false),
-				"None of the above"));
-		methods.add(new MethodTable("M04", "FSM", "myMethod4(String, String, String)", new Boolean(false),
-				"None of the above"));
-		methods.add(new MethodTable("M05", "FSM", "myMethod5(String, String, String)", new Boolean(false),
-				"None of the above"));
-		methods.add(new MethodTable("M06", "Main", "myMethod6(String, String, String)", new Boolean(false),
-				"None of the above"));
-		return methods;
-	}
-
-	private void loadingDataFromJAR() {
-		device.getPath();
+		
+		// Variables to load the mainEntity
+		ClassLoader loader=getClass().getClassLoader();
+		Class entityClass;
 		try {
-			Set<Class> classesFromJAR = JARManager.getClassesFromJarFile(device.getPath().toFile());
-			Set<String> names = classesFromJAR.stream().map(Class::getName).collect(Collectors.toSet());
-
-			Iterator iterator = names.iterator();
-
-			// simple iteration
-			while (iterator.hasNext()) {
-				System.out.println(iterator.next());
+			String entityName=txtMainEntityName.getText();
+			entityClass = loader.loadClass(entityName);
+			List<Method>entityMethods=loadEntityMethods(entityClass);
+			entityName=entityName.substring(entityName.lastIndexOf('.')+1,entityName.length());
+			int seq=1;			
+			for (Method method:entityMethods) {
+				String id="M"+seq;
+				seq+=1;
+				
+				String simplifiedMethodName=getSimplifiedMethodName(method.toString());
+				MethodTable methodTable= new MethodTable(id,entityName, simplifiedMethodName, false, "None of the above");
+				methods.add(methodTable);
+				System.out.println(id+"  "+entityClass.getSimpleName()+" "+simplifiedMethodName);
 			}
-
-		} catch (IOException | ClassNotFoundException e) {
+		} catch (ClassNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		return methods;
 	}
 
+	private List<Method> loadEntityMethods(Class entityClass) {
+		List<Method> methods=null;
+		try {
+			//entityClass = loader.loadClass("org.rossedth.FSM_Adaptable.RecognizerFSM");
+			Object entityObject=entityClass.newInstance();
+			methods=getPublicMethods(entityObject);
+			System.out.println("The class has "+methods.size()+" public methods");
+			methods.forEach(System.out::println);
+		} catch (InstantiationException | IllegalAccessException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return methods;
+	}
+
+	private List<Method> getPublicMethods(Object o) {
+		   List<Method> publicMethods = new ArrayList<>();
+
+		   // getDeclaredMethods only includes methods in the class (good)
+		   // but also includes protected and private methods (bad)
+		   for (Method method : o.getClass().getDeclaredMethods()) {
+		      if (!Modifier.isPublic(method.getModifiers())) continue; //only **public** methods
+		      publicMethods.add(method);
+		   }
+		   return publicMethods;
+		}
+	
+	
+	private String getSimplifiedMethodName(String fullMethodName) {
+		String simplified="";
+		String[] split1=fullMethodName.split(" ");
+		String modifier = split1[0];
+		String returnType=split1[1];
+		returnType=returnType.substring(returnType.lastIndexOf('.')+1,returnType.length());
+		String signature=split1[2];
+		String methodName=signature.substring(0, signature.indexOf('('));
+		methodName=methodName.substring(methodName.lastIndexOf('.')+1,methodName.length());
+		String parameters;
+		if (signature.indexOf(')')-signature.indexOf('(')==1) {
+			parameters="";
+		}else {
+			parameters=signature.substring(signature.indexOf('(')+1,signature.indexOf(')'));
+			parameters=parameters.substring(parameters.lastIndexOf('.')+1,parameters.length());
+		}
+
+		simplified=modifier+" "+returnType+" "+methodName+"("+parameters+")";
+		return simplified;
+	}
 	private void loadConfigFile(String filePath) {
 		ObjectMapper mapper = new ObjectMapper();
 		try {

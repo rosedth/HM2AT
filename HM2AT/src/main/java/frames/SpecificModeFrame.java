@@ -10,9 +10,11 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -26,6 +28,7 @@ import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
@@ -88,6 +91,8 @@ public class SpecificModeFrame extends JFrame {
 
 	private JTextField txtExecutorName;
 	private JTextField txtMemoryName;
+
+	private String pkgGenPath;
 
 	/**
 	 * Launch the application.
@@ -314,6 +319,11 @@ public class SpecificModeFrame extends JFrame {
 		cbModelProgLang.setEnabled(false);
 
 		btnDownload = new JButton("Download");
+		btnDownload.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				downloadSpecificAdaptiveLogic();
+			}
+		});
 		btnDownload.setEnabled(false);
 
 		JLabel lblModelName = new JLabel("Model");
@@ -539,167 +549,211 @@ public class SpecificModeFrame extends JFrame {
 		memoryPanelEditor.add(spMemory);
 
 		GroupLayout gl_tabMemoryPanel = new GroupLayout(tabMemoryPanel);
-		gl_tabMemoryPanel.setHorizontalGroup(
-			gl_tabMemoryPanel.createParallelGroup(Alignment.LEADING)
-				.addGroup(gl_tabMemoryPanel.createSequentialGroup()
-					.addContainerGap()
-					.addGroup(gl_tabMemoryPanel.createParallelGroup(Alignment.LEADING)
-						.addComponent(memoryPanelEditor, GroupLayout.DEFAULT_SIZE, 497, Short.MAX_VALUE)
-						.addGroup(gl_tabMemoryPanel.createSequentialGroup()
-							.addComponent(lblMemoryName)
-							.addPreferredGap(ComponentPlacement.UNRELATED)
-							.addComponent(txtMemoryName, GroupLayout.PREFERRED_SIZE, 447, GroupLayout.PREFERRED_SIZE)))
-					.addContainerGap())
-		);
-		gl_tabMemoryPanel.setVerticalGroup(
-			gl_tabMemoryPanel.createParallelGroup(Alignment.LEADING)
-				.addGroup(gl_tabMemoryPanel.createSequentialGroup()
-					.addContainerGap()
-					.addGroup(gl_tabMemoryPanel.createParallelGroup(Alignment.BASELINE)
-						.addComponent(lblMemoryName)
-						.addComponent(txtMemoryName, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
-					.addPreferredGap(ComponentPlacement.RELATED)
-					.addComponent(memoryPanelEditor, GroupLayout.PREFERRED_SIZE, 235, GroupLayout.PREFERRED_SIZE)
-					.addContainerGap(12, Short.MAX_VALUE))
-		);
+		gl_tabMemoryPanel.setHorizontalGroup(gl_tabMemoryPanel.createParallelGroup(Alignment.LEADING)
+				.addGroup(gl_tabMemoryPanel.createSequentialGroup().addContainerGap()
+						.addGroup(gl_tabMemoryPanel.createParallelGroup(Alignment.LEADING)
+								.addComponent(memoryPanelEditor, GroupLayout.DEFAULT_SIZE, 497, Short.MAX_VALUE)
+								.addGroup(gl_tabMemoryPanel.createSequentialGroup().addComponent(lblMemoryName)
+										.addPreferredGap(ComponentPlacement.UNRELATED).addComponent(txtMemoryName,
+												GroupLayout.PREFERRED_SIZE, 447, GroupLayout.PREFERRED_SIZE)))
+						.addContainerGap()));
+		gl_tabMemoryPanel.setVerticalGroup(gl_tabMemoryPanel.createParallelGroup(Alignment.LEADING)
+				.addGroup(gl_tabMemoryPanel.createSequentialGroup().addContainerGap()
+						.addGroup(gl_tabMemoryPanel.createParallelGroup(Alignment.BASELINE).addComponent(lblMemoryName)
+								.addComponent(txtMemoryName, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
+										GroupLayout.PREFERRED_SIZE))
+						.addPreferredGap(ComponentPlacement.RELATED)
+						.addComponent(memoryPanelEditor, GroupLayout.PREFERRED_SIZE, 235, GroupLayout.PREFERRED_SIZE)
+						.addContainerGap(12, Short.MAX_VALUE)));
 		tabMemoryPanel.setLayout(gl_tabMemoryPanel);
 
 		GroupLayout gl_panelAdaptiveLayer = new GroupLayout(panelAdaptiveLayer);
-		gl_panelAdaptiveLayer.setHorizontalGroup(
-			gl_panelAdaptiveLayer.createParallelGroup(Alignment.TRAILING)
-				.addGroup(gl_panelAdaptiveLayer.createSequentialGroup()
-					.addContainerGap()
-					.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.TRAILING)
-						.addComponent(btnDownload)
-						.addComponent(tabbedPaneAdaptiveLayer, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, 522, Short.MAX_VALUE)
+		gl_panelAdaptiveLayer.setHorizontalGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.TRAILING)
+				.addGroup(gl_panelAdaptiveLayer.createSequentialGroup().addContainerGap().addGroup(gl_panelAdaptiveLayer
+						.createParallelGroup(Alignment.TRAILING).addComponent(btnDownload)
+						.addComponent(tabbedPaneAdaptiveLayer, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, 522,
+								Short.MAX_VALUE)
 						.addGroup(Alignment.LEADING, gl_panelAdaptiveLayer.createSequentialGroup()
-							.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.LEADING)
-								.addGroup(gl_panelAdaptiveLayer.createSequentialGroup()
-									.addGap(21)
-									.addComponent(lblModelLanguage))
-								.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.TRAILING)
-									.addComponent(lblModelName)
-									.addComponent(lblImplementationName)))
-							.addGap(18)
-							.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.LEADING)
-								.addComponent(cbImplementationName, 0, 427, Short.MAX_VALUE)
-								.addComponent(cbDeviceModel, 0, 427, Short.MAX_VALUE)
-								.addGroup(gl_panelAdaptiveLayer.createSequentialGroup()
-									.addComponent(cbModelProgLang, 0, 157, Short.MAX_VALUE)
-									.addGap(241)
-									.addComponent(btnLoadModel, GroupLayout.PREFERRED_SIZE, 29, GroupLayout.PREFERRED_SIZE)))))
-					.addContainerGap())
-		);
-		gl_panelAdaptiveLayer.setVerticalGroup(
-			gl_panelAdaptiveLayer.createParallelGroup(Alignment.TRAILING)
-				.addGroup(gl_panelAdaptiveLayer.createSequentialGroup()
-					.addGap(18)
-					.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.BASELINE)
-						.addComponent(cbDeviceModel, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
-						.addComponent(lblModelName))
-					.addGap(7)
-					.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.BASELINE)
-						.addComponent(cbImplementationName, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
-						.addComponent(lblImplementationName))
-					.addPreferredGap(ComponentPlacement.UNRELATED)
-					.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.LEADING)
+								.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.LEADING)
+										.addGroup(gl_panelAdaptiveLayer.createSequentialGroup().addGap(21)
+												.addComponent(lblModelLanguage))
+										.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.TRAILING)
+												.addComponent(lblModelName).addComponent(lblImplementationName)))
+								.addGap(18)
+								.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.LEADING)
+										.addComponent(cbImplementationName, 0, 427, Short.MAX_VALUE)
+										.addComponent(cbDeviceModel, 0, 427, Short.MAX_VALUE)
+										.addGroup(gl_panelAdaptiveLayer.createSequentialGroup()
+												.addComponent(cbModelProgLang, 0, 157, Short.MAX_VALUE).addGap(241)
+												.addComponent(btnLoadModel, GroupLayout.PREFERRED_SIZE, 29,
+														GroupLayout.PREFERRED_SIZE)))))
+						.addContainerGap()));
+		gl_panelAdaptiveLayer.setVerticalGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.TRAILING)
+				.addGroup(gl_panelAdaptiveLayer.createSequentialGroup().addGap(18)
 						.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.BASELINE)
-							.addComponent(cbModelProgLang, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
-							.addComponent(lblModelLanguage))
-						.addComponent(btnLoadModel))
-					.addGap(36)
-					.addComponent(tabbedPaneAdaptiveLayer, GroupLayout.PREFERRED_SIZE, 312, GroupLayout.PREFERRED_SIZE)
-					.addGap(18)
-					.addComponent(btnDownload)
-					.addGap(32))
-		);
+								.addComponent(cbDeviceModel, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
+										GroupLayout.PREFERRED_SIZE)
+								.addComponent(lblModelName))
+						.addGap(7)
+						.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.BASELINE)
+								.addComponent(cbImplementationName, GroupLayout.PREFERRED_SIZE,
+										GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+								.addComponent(lblImplementationName))
+						.addPreferredGap(ComponentPlacement.UNRELATED)
+						.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.LEADING)
+								.addGroup(gl_panelAdaptiveLayer.createParallelGroup(Alignment.BASELINE)
+										.addComponent(cbModelProgLang, GroupLayout.PREFERRED_SIZE,
+												GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+										.addComponent(lblModelLanguage))
+								.addComponent(btnLoadModel))
+						.addGap(36).addComponent(tabbedPaneAdaptiveLayer, GroupLayout.PREFERRED_SIZE, 312,
+								GroupLayout.PREFERRED_SIZE)
+						.addGap(18).addComponent(btnDownload).addGap(32)));
 
 		panelAdaptiveLayer.setLayout(gl_panelAdaptiveLayer);
 
 		GroupLayout gl_contentPane = new GroupLayout(contentPane);
-		gl_contentPane.setHorizontalGroup(
-			gl_contentPane.createParallelGroup(Alignment.LEADING)
-				.addGroup(gl_contentPane.createSequentialGroup()
-					.addContainerGap()
-					.addGroup(gl_contentPane.createParallelGroup(Alignment.LEADING)
-						.addComponent(panelAdaptiveLayer, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+		gl_contentPane.setHorizontalGroup(gl_contentPane.createParallelGroup(Alignment.LEADING).addGroup(gl_contentPane
+				.createSequentialGroup().addContainerGap()
+				.addGroup(gl_contentPane.createParallelGroup(Alignment.LEADING)
+						.addComponent(panelAdaptiveLayer, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE,
+								GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
 						.addComponent(panelDevice, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, 554, Short.MAX_VALUE)
 						.addGroup(Alignment.TRAILING, gl_contentPane.createSequentialGroup()
-							.addComponent(btnBack, GroupLayout.PREFERRED_SIZE, 64, GroupLayout.PREFERRED_SIZE)
-							.addPreferredGap(ComponentPlacement.RELATED)
-							.addComponent(btnExit, GroupLayout.PREFERRED_SIZE, 55, GroupLayout.PREFERRED_SIZE)))
-					.addContainerGap())
-		);
-		gl_contentPane.setVerticalGroup(
-			gl_contentPane.createParallelGroup(Alignment.TRAILING)
-				.addGroup(gl_contentPane.createSequentialGroup()
-					.addContainerGap()
-					.addComponent(panelDevice, GroupLayout.PREFERRED_SIZE, 150, GroupLayout.PREFERRED_SIZE)
-					.addGap(18)
-					.addComponent(panelAdaptiveLayer, GroupLayout.PREFERRED_SIZE, 527, Short.MAX_VALUE)
-					.addPreferredGap(ComponentPlacement.UNRELATED)
-					.addGroup(gl_contentPane.createParallelGroup(Alignment.BASELINE)
-						.addComponent(btnExit)
-						.addComponent(btnBack))
-					.addContainerGap())
-		);
+								.addComponent(btnBack, GroupLayout.PREFERRED_SIZE, 64, GroupLayout.PREFERRED_SIZE)
+								.addPreferredGap(ComponentPlacement.RELATED)
+								.addComponent(btnExit, GroupLayout.PREFERRED_SIZE, 55, GroupLayout.PREFERRED_SIZE)))
+				.addContainerGap()));
+		gl_contentPane.setVerticalGroup(gl_contentPane.createParallelGroup(Alignment.TRAILING)
+				.addGroup(gl_contentPane.createSequentialGroup().addContainerGap()
+						.addComponent(panelDevice, GroupLayout.PREFERRED_SIZE, 150, GroupLayout.PREFERRED_SIZE)
+						.addGap(18).addComponent(panelAdaptiveLayer, GroupLayout.PREFERRED_SIZE, 527, Short.MAX_VALUE)
+						.addPreferredGap(ComponentPlacement.UNRELATED).addGroup(gl_contentPane
+								.createParallelGroup(Alignment.BASELINE).addComponent(btnExit).addComponent(btnBack))
+						.addContainerGap()));
 
 		contentPane.setLayout(gl_contentPane);
 	}
 
-	public void loadModel() {
-		// retrieve model from Name
-		// retrieve model implementation from <model, language> tuple
-		// load the script for specialization of the implementation
-		// execute the commands
+	public void downloadSpecificAdaptiveLogic() {
+		boolean saved=prepareForDownload();
+		showSaveAdaptiveLogicDialog();
+		deleteZip();
+		JOptionPane.showMessageDialog(null, selectResultMessage(saved));
+		this.dispose();
+	}
 
+	private boolean prepareForDownload() {
+		boolean result;
+
+		// save the content of the tabs to .java files in \tmp
+		String path = MainHM2AT.repository + "\\tmp";
+		try {
+			// Save upd-Memory.java to tmp
+			Files.writeString(Paths.get(path + "\\upd-SpecificMemory.java"), txtEditorMemory.getText(), StandardCharsets.UTF_8);
+			// Save upd-Monitor.java to tmp
+			Files.writeString(Paths.get(path + "\\upd-SpecificMonitor.java"), txtEditorMonitor.getText(),
+					StandardCharsets.UTF_8);
+			// Save upd-Reasoner.java to tmp
+			Files.writeString(Paths.get(path + "\\upd-SpecificReasoner.java"), txtEditorReasoner.getText(),
+					StandardCharsets.UTF_8);
+			// Save upd-Selector.java to tmp
+			Files.writeString(Paths.get(path + "\\upd-SpecificSelector.java"), txtEditorSelector.getText(),
+					StandardCharsets.UTF_8);
+			// Save upd-Executor.java to tmp
+			Files.writeString(Paths.get(path + "\\upd-SpecificExecutor.java"), txtEditorExecutor.getText(),
+					StandardCharsets.UTF_8);
+		} catch (IOException ex) {
+			System.out.print("Invalid Path");
+		}
+
+		String source = MainHM2AT.repository + "\\implementations\\" + selectedImplementation.getId();
+		ProcessBuilder builder = new ProcessBuilder("python",
+				System.getProperty("user.dir") + "\\scripts\\prepareForDownload.py", source,
+				MainHM2AT.repository + "\\tmp");
+		builder.redirectErrorStream(true);
+		try {
+			Process process = builder.start();
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		return true;
+	}
+
+	public void deleteZip() {
+		File file = new File(MainHM2AT.repository + "\\tmp\\HM2At-Download.zip");
+
+		if (file.delete()) {
+			System.out.println("File deleted successfully");
+		} else {
+			System.out.println("Failed to delete the file");
+		}
+	}
+
+	public void loadModel() {
+
+		// copy the files from the model's folder to the temp folder
+		Path source = Paths
+				.get(MainHM2AT.repository + "\\implementations\\" + selectedImplementation.getId() + "\\scripts\\gen");
+		Path destination = Paths.get(MainHM2AT.repository + "\\tmp");
+		try {
+			// Files.copy(source, destination)
+			copyFolder(source, destination);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 		List<Path> packgeSrc;
-		List<String>lines;
+		List<String> lines;
 		try {
-			packgeSrc = listDirectories(Paths.get(MainHM2AT.repository+"\\tmp"));
-			Path modelSrc=packgeSrc.get(1);
-			
+			packgeSrc = listDirectories(Paths.get(
+					MainHM2AT.repository + "\\implementations\\" + selectedImplementation.getId() + "\\scripts\\gen"));
+
+			Path modelSrc = packgeSrc.get(1);
+
 			// Print information on MEMORY TAB
-			List<Path> memoryClassPath= FileManager.findByFilePartialName(modelSrc, "memory");
+			List<Path> memoryClassPath = FileManager.findByFilePartialName(modelSrc, "memory");
 			// Is expected that only ONE class related to the Memory role would be created
-			List<String>memoryLines=Scriptor.printCodeFromFile(memoryClassPath.get(0).toString());
+			List<String> memoryLines = Scriptor.printCodeFromFile(memoryClassPath.get(0).toString());
 			txtEditorMemory.setEnabled(true);
 			printEntity2Editor(txtEditorMemory, memoryLines);
 			txtMemoryName.setText(memoryClassPath.get(0).getFileName().toString());
-			
+
 			// Print information on MONITOR TAB
-			List<Path> monitorClassPath= FileManager.findByFilePartialName(modelSrc, "monitor"); 
+			List<Path> monitorClassPath = FileManager.findByFilePartialName(modelSrc, "monitor");
 			// Is expected that only ONE class related to the Monitor role would be created
-			List<String> monitorLines=Scriptor.printCodeFromFile(monitorClassPath.get(0).toString());
+			List<String> monitorLines = Scriptor.printCodeFromFile(monitorClassPath.get(0).toString());
 			txtEditorMonitor.setEnabled(true);
 			printEntity2Editor(txtEditorMonitor, monitorLines);
-			txtEntityName.setText(monitorClassPath.get(0).getFileName().toString());			
-			
+			txtEntityName.setText(monitorClassPath.get(0).getFileName().toString());
+
 			// Print information on REASONER TAB
-			List<Path> reasonerClassPath= FileManager.findByFilePartialName(modelSrc, "reasoner"); 
+			List<Path> reasonerClassPath = FileManager.findByFilePartialName(modelSrc, "reasoner");
 			// Is expected that only ONE class related to the Reasoner role would be created
-			List<String> reasonerLines=Scriptor.printCodeFromFile(reasonerClassPath.get(0).toString());
+			List<String> reasonerLines = Scriptor.printCodeFromFile(reasonerClassPath.get(0).toString());
 			txtEditorReasoner.setEnabled(true);
 			printEntity2Editor(txtEditorReasoner, reasonerLines);
-			txtReasonerName.setText(reasonerClassPath.get(0).getFileName().toString());	
+			txtReasonerName.setText(reasonerClassPath.get(0).getFileName().toString());
 
 			// Print information on SELECTOR TAB
-			List<Path> selectorClassPath= FileManager.findByFilePartialName(modelSrc, "selector"); 
+			List<Path> selectorClassPath = FileManager.findByFilePartialName(modelSrc, "selector");
 			// Is expected that only ONE class related to the Selector role would be created
-			List<String> selectorLines=Scriptor.printCodeFromFile(selectorClassPath.get(0).toString());
+			List<String> selectorLines = Scriptor.printCodeFromFile(selectorClassPath.get(0).toString());
 			txtEditorSelector.setEnabled(true);
 			printEntity2Editor(txtEditorSelector, selectorLines);
-			txtSelectorName.setText(selectorClassPath.get(0).getFileName().toString());	
-			
+			txtSelectorName.setText(selectorClassPath.get(0).getFileName().toString());
+
 			// Print information on EXECUTOR TAB
-			List<Path> executorClassPath= FileManager.findByFilePartialName(modelSrc, "executor"); 
+			List<Path> executorClassPath = FileManager.findByFilePartialName(modelSrc, "executor");
 			// Is expected that only ONE class related to the Selector role would be created
-			List<String> executorLines=Scriptor.printCodeFromFile(executorClassPath.get(0).toString());
+			List<String> executorLines = Scriptor.printCodeFromFile(executorClassPath.get(0).toString());
 			txtEditorExecutor.setEnabled(true);
 			printEntity2Editor(txtEditorExecutor, executorLines);
-			txtExecutorName.setText(executorClassPath.get(0).getFileName().toString());	
-			
+			txtExecutorName.setText(executorClassPath.get(0).getFileName().toString());
+
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -710,21 +764,19 @@ public class SpecificModeFrame extends JFrame {
 	}
 
 	private void printEntity2Editor(RSyntaxTextArea editor, List<String> lines) {
-	editor.setText(String.join(System.getProperty("line.separator"), lines));
+		editor.setText(String.join(System.getProperty("line.separator"), lines));
 	}
 
+	public static List<Path> listDirectories(Path path) throws IOException {
 
-    public static List<Path> listDirectories(Path path) throws IOException {
+		List<Path> result;
+		try (Stream<Path> walk = Files.walk(path)) {
+			result = walk.filter(Files::isDirectory).collect(Collectors.toList());
+		}
+		return result;
 
-        List<Path> result;
-        try (Stream<Path> walk = Files.walk(path)) {
-            result = walk.filter(Files::isDirectory)
-                    .collect(Collectors.toList());
-        }
-        return result;
+	}
 
-    }
-    
 	private void showSearchDeviceDialog() {
 		lblDeviceStatus.setText("");
 		lblDeviceStatus.setEnabled(false);
@@ -746,6 +798,35 @@ public class SpecificModeFrame extends JFrame {
 			cbDeviceLang.setEnabled(false);
 			cbDeviceType.setEnabled(false);
 		}
+	}
+
+	private void showSaveAdaptiveLogicDialog() {
+		JFileChooser fileChooser = new JFileChooser();
+		// The extension of the file should be choose according to the modeling language
+		String suggestedFileName = "HM2AT-Download.zip";
+		fileChooser.setSelectedFile(new File(suggestedFileName));
+		fileChooser.setDialogTitle("Save Adaptive Logic as ");
+		int response = fileChooser.showSaveDialog(this);
+		if (response == JFileChooser.APPROVE_OPTION) {
+			File selectedFile = fileChooser.getSelectedFile();
+			try {
+				FileManager.copyFileNIO(MainHM2AT.repository + "\\tmp\\HM2At-Download.zip", selectedFile.getPath());
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+//			System.out.println("Save as file: " + selectedFile.getAbsolutePath());
+		}
+	}
+
+	private String selectResultMessage(boolean result) {
+		String msg;
+		if (result) {
+			msg = "<html><font color='green'>Adaptive Logic sucessfully downloaded!</font></html>";
+		} else {
+			msg = "<html><font color='red'>Error while attempting submitting the Adaptive Logic!</font></html>";
+		}
+		return msg;
 	}
 
 	public void setDevice(UnderlyingDevice device) {
@@ -774,5 +855,19 @@ public class SpecificModeFrame extends JFrame {
 		// TODO Auto-generated method stub
 		String[] options = { "---", "Java", "C#", "C++", "C" };
 		return options;
+	}
+
+	public static void copyFolder(Path src, Path dest) throws IOException {
+		try (Stream<Path> stream = Files.walk(src)) {
+			stream.forEach(source -> copy(source, dest.resolve(src.relativize(source))));
+		}
+	}
+
+	private static void copy(Path source, Path dest) {
+		try {
+			Files.copy(source, dest, StandardCopyOption.REPLACE_EXISTING);
+		} catch (Exception e) {
+			throw new RuntimeException(e.getMessage(), e);
+		}
 	}
 }

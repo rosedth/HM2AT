@@ -63,6 +63,11 @@
 			<artifactId>rsyntaxtextarea</artifactId>
 			<version>3.3.0</version>
 		</dependency>
+		<dependency>
+			<groupId>org.rossedth</groupId>
+			<artifactId>FSM-Adaptable</artifactId>
+			<version>2</version>
+		</dependency>
 	</dependencies>
 
 	<build>
